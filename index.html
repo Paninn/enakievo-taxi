@@ -95,7 +95,9 @@
 
             <div class="card">
                 <h3 style="text-align:center;margin-bottom:32px;font-size:28px;">Мои заказы</h3>
-                <div id="passengerOrdersList"></div>
+                <div id="passengerOrdersList">
+                    <p style="text-align:center;opacity:0.6;">Нет заказов</p>
+                </div>
             </div>
 
             <!-- Рейтинг после поездки -->
@@ -122,13 +124,6 @@
                 <p style="text-align:center;font-size:40px;margin:48px 0;" id="driverStatus">Оффлайн</p>
                 <button class="btn btn-green" id="lineBtn" onclick="toggleOnline()">Выйти на линию</button>
             </div>
-
-            <div class="card">
-                <h3 style="text-align:center;margin-bottom:32px;font-size:28px;">Доступные заказы</h3>
-                <div id="driverOrdersList">
-                    <p style="text-align:center;opacity:0.6;">Заказы появятся после выхода на линию</p>
-                </div>
-            </div>
         </div>
 
         <!-- ПАНЕЛЬ АДМИНА -->
@@ -141,11 +136,6 @@
                     <button class="btn btn-purple" onclick="setRole('admin')">Админ</button>
                 </div>
                 <button class="btn btn-red" style="margin-top:24px;" onclick="setRole('passenger')">Убрать роль</button>
-            </div>
-
-            <div class="card">
-                <h3 style="text-align:center;margin-bottom:32px;font-size:28px;">Все заказы</h3>
-                <div id="adminOrdersList"></div>
             </div>
         </div>
     </div>
@@ -164,7 +154,6 @@
 
         let roles = JSON.parse(localStorage.getItem('taxi_roles') || '{}');
         let orders = JSON.parse(localStorage.getItem('taxi_orders') || '[]');
-        let allOrders = JSON.parse(localStorage.getItem('taxi_all_orders') || '[]');
         let chatMessages = JSON.parse(localStorage.getItem('taxi_chat') || '[]');
 
         let currentRole = roles[userId] || 'passenger';
@@ -172,7 +161,7 @@
         document.getElementById(currentRole + 'Panel').style.display = 'block';
         document.getElementById('modalRole').textContent = currentRole === 'admin' ? '👑 Администратор' : currentRole === 'driver' ? 'Водитель 🚗' : 'Пассажир';
 
-        // Карта (только для пассажира)
+        // Карта для пассажира
         let map, fromMarker, toMarker, fromCoords, toCoords;
         let isFrom = true;
 
@@ -243,9 +232,7 @@
                 time: new Date().toLocaleString('ru-RU')
             };
             orders.unshift(order);
-            allOrders.unshift(order);
             localStorage.setItem('taxi_orders', JSON.stringify(orders.slice(0,50)));
-            localStorage.setItem('taxi_all_orders', JSON.stringify(allOrders));
             showOrders();
             Telegram.WebApp.sendData(JSON.stringify(order));
             document.getElementById('ratingCard').style.display = 'block';
@@ -282,17 +269,19 @@
 
         // Рейтинг
         let selectedRating = 5;
-        const stars = document.querySelectorAll('#stars .star');
-        stars.forEach((star, i) => {
-            star.addEventListener('click', () => {
+        const stars = document.getElementById('stars').children;
+        for (let i = 0; i < stars.length; i++) {
+            stars[i].addEventListener('click', function() {
                 selectedRating = i + 1;
-                stars.forEach((s, j) => s.classList.toggle('selected', j < selectedRating));
+                for (let j = 0; j < stars.length; j++) {
+                    stars[j].classList.toggle('selected', j < selectedRating);
+                }
             });
-        });
+        }
 
         window.sendRating = function() {
-            const comment = document.getElementById('ratingComment').value;
-            const ratingData = { rating: selectedRating, comment, time: new Date().toLocaleString('ru-RU') };
+            const comment = = document.getElementById('ratingComment').value;
+            const ratingData = { rating: selectedRating, comment: comment, time: new Date().toLocaleString('ru-RU') };
             Telegram.WebApp.sendData(JSON.stringify({ action: 'rating', ratingData }));
             alert('Спасибо за оценку!');
             document.getElementById('ratingCard').style.display = 'none';
