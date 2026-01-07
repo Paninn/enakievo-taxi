@@ -3,19 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Такси Енакиево 🚕</title>
+    <title>Такси Енакиево & Горловка 🚕</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         
         :root {
-            --primary: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            --glass: rgba(255, 255, 255, 0.1);
-            --glass-hover: rgba(255, 255, 255, 0.2);
+            --primary: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            --glass: rgba(255, 255, 255, 0.12);
+            --glass-hover: rgba(255, 255, 255, 0.22);
             --accent: #4ecdc4;
+            --neon: #00ffea;
             --danger: #ff6b6b;
-            --success: #51cf66;
-            --shadow: 0 20px 40px rgba(0,0,0,0.1);
+            --shadow: 0 20px 50px rgba(0,0,0,0.3);
         }
 
         body {
@@ -23,138 +23,127 @@
             background: var(--primary);
             color: white;
             min-height: 100vh;
-            overflow-x: hidden;
+            position: relative;
         }
 
-        .container { max-width: 420px; margin: 0 auto; padding: 20px; }
-
-        .header {
-            text-align: center; padding: 30px 0;
-            animation: slideDown 0.8s ease-out;
+        /* Кнопка профиля справа сверху */
+        #profileBtn {
+            position: fixed; top: 20px; right: 20px; z-index: 1000;
+            background: var(--glass); backdrop-filter: blur(20px);
+            border: none; border-radius: 50%; width: 60px; height: 60px;
+            font-size: 32px; cursor: pointer;
+            box-shadow: var(--shadow); transition: all 0.4s;
         }
-        h1 { font-size: 36px; margin-bottom: 10px; font-weight: 700; }
+        #profileBtn:hover { transform: scale(1.1); box-shadow: 0 0 30px var(--neon); }
+
+        /* Модальное окно профиля */
+        #profileModal {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.7); backdrop-filter: blur(10px); z-index: 999;
+            justify-content: center; align-items: center; animation: fadeIn 0.4s;
+        }
+        .modal-content {
+            background: var(--glass); backdrop-filter: blur(30px);
+            border-radius: 28px; padding: 30px; max-width: 90%; width: 400px;
+            box-shadow: 0 30px 80px rgba(0,0,0,0.5); text-align: center;
+            animation: slideUp 0.5s;
+        }
+        .closeBtn { position: absolute; top: 15px; right: 20px; font-size: 30px; cursor: pointer; }
+
+        .container { max-width: 420px; margin: 0 auto; padding: 20px; padding-top: 90px; }
+
+        .header { text-align: center; padding: 20px 0; animation: slideDown 0.8s; }
+        h1 { font-size: 36px; margin-bottom: 10px; text-shadow: 0 0 20px var(--neon); }
 
         .glass-card {
-            background: var(--glass);
-            backdrop-filter: blur(25px);
-            border-radius: 24px;
-            padding: 28px;
-            margin: 20px 0;
-            border: 1px solid rgba(255,255,255,0.2);
-            box-shadow: var(--shadow);
-            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-            animation: fadeInUp 0.6s ease-out;
+            background: var(--glass); backdrop-filter: blur(25px);
+            border-radius: 24px; padding: 28px; margin: 20px 0;
+            border: 1px solid rgba(255,255,255,0.2); box-shadow: var(--shadow);
+            transition: all 0.4s; animation: fadeInUp 0.6s;
         }
-
-        .glass-card:hover { 
-            transform: translateY(-4px);
-            box-shadow: 0 30px 60px rgba(0,0,0,0.15);
-            background: var(--glass-hover);
-        }
-
-        .profile-grid {
-            display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 20px 0;
-        }
-        .profile-item { text-align: center; padding: 16px; background: rgba(255,255,255,0.05); border-radius: 16px; }
+        .glass-card:hover { transform: translateY(-6px); background: var(--glass-hover); }
 
         input {
             width: 100%; padding: 20px 24px; margin: 12px 0;
-            background: rgba(255,255,255,0.15);
-            border: 2px solid transparent;
-            border-radius: 20px;
-            font-size: 18px;
-            color: white;
-            backdrop-filter: blur(10px);
-            transition: all 0.3s ease;
+            background: rgba(255,255,255,0.15); border: 2px solid transparent;
+            border-radius: 20px; font-size: 18px; color: white;
+            transition: all 0.3s;
         }
-        input::placeholder { color: rgba(255,255,255,0.7); }
-        input:focus {
-            outline: none;
-            border-color: var(--accent);
-            background: rgba(255,255,255,0.2);
-            transform: scale(1.02);
-        }
-        input.error { border-color: var(--danger); background: rgba(255,107,107,0.2); }
+        input:focus { border-color: var(--neon); box-shadow: 0 0 20px rgba(0,255,234,0.3); }
+        input.error { border-color: var(--danger); animation: shake 0.5s; }
 
         .btn {
-            width: 100%; padding: 22px; margin: 16px 0;
-            border: none; border-radius: 20px;
-            font-size: 20px; font-weight: 600;
-            cursor: pointer; transition: all 0.3s ease;
-            backdrop-filter: blur(10px);
+            width: 100%; padding: 22px; margin: 16px 0; border: none;
+            border-radius: 20px; font-size: 20px; font-weight: 600;
+            cursor: pointer; position: relative; overflow: hidden;
+            background: linear-gradient(135deg, var(--accent), #45b7a3);
         }
-        .btn-primary { background: linear-gradient(135deg, var(--accent), #45b7a3); color: white; }
-        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 15px 30px rgba(78,205,196,0.4); }
-        .btn-secondary { background: rgba(255,255,255,0.15); color: white; }
-        
-        #priceCard { font-size: 28px; font-weight: 700; text-align: center; min-height: 80px; display: flex; align-items: center; justify-content: center; }
+        .btn::after { content: ''; position: absolute; top: 50%; left: 50%;
+            width: 0; height: 0; background: rgba(255,255,255,0.3);
+            border-radius: 50%; transform: translate(-50%,-50%); transition: all 0.6s;
+        }
+        .btn:active::after { width: 300px; height: 300px; }
 
-        .orders-list {
-            max-height: 300px; overflow-y: auto;
-            display: grid; gap: 12px;
-        }
-        .order-item {
-            background: rgba(255,255,255,0.08);
-            padding: 16px; border-radius: 16px;
-            border-left: 4px solid var(--accent);
-        }
-        .order-time { font-size: 14px; opacity: 0.8; }
-        .order-route { font-size: 18px; font-weight: 600; margin: 4px 0; }
-        .order-price { font-size: 20px; color: var(--success); font-weight: 700; }
+        #priceCard { font-size: 28px; text-align: center; min-height: 100px; display: flex; flex-direction: column; justify-content: center; }
 
-        @keyframes slideDown { from { opacity: 0; transform: translateY(-30px); } }
-        @keyframes fadeInUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
+        .orders-list { max-height: 300px; overflow-y: auto; gap: 12px; display: grid; }
+        .order-item { background: rgba(255,255,255,0.08); padding: 16px; border-radius: 16px; border-left: 5px solid var(--neon); }
+
+        @keyframes slideDown { from { opacity: 0; transform: translateY(-40px); } }
+        @keyframes fadeInUp { from { opacity: 0; transform: translateY(40px); } }
+        @keyframes fadeIn { from { opacity: 0; } }
+        @keyframes slideUp { from { transform: translateY(50px); opacity: 0; } }
+        @keyframes shake { 0%,100% { transform: translateX(0); } 10%,30%,50%,70%,90% { transform: translateX(-10px); } 20%,40%,60%,80% { transform: translateX(10px); } }
     </style>
 </head>
 <body>
+    <!-- Кнопка профиля -->
+    <button id="profileBtn" onclick="openProfile()">👤</button>
+
+    <!-- Модальное окно профиля -->
+    <div id="profileModal" onclick="if(event.target===this) closeProfile()">
+        <div class="modal-content">
+            <span class="closeBtn" onclick="closeProfile()">×</span>
+            <h2 style="margin-bottom:20px; text-shadow: 0 0 15px var(--neon);">Ваш профиль</h2>
+            <p style="font-size:24px; margin:15px 0;"><strong id="modalName"></strong></p>
+            <p style="font-family:monospace; font-size:16px; opacity:0.8;">ID: <span id="modalId"></span></p>
+            <p style="font-size:20px; margin:20px 0;">Заказов: <strong id="modalOrders">0</strong></p>
+            <div style="background:rgba(255,255,255,0.1); padding:15px; border-radius:16px; margin-top:20px;">
+                🚕 Такси Енакиево & Горловка<br>
+                💰 Наличкой водителю
+            </div>
+        </div>
+    </div>
+
     <div class="container">
         <div class="header">
-            <h1>🚕 Такси Енакиево</h1>
-            <p style="opacity: 0.9;">Быстро • Дёшево • Надёжно</p>
-        </div>
-
-        <!-- Профиль -->
-        <div class="glass-card" id="profileCard">
-            <div class="profile-grid">
-                <div class="profile-item">
-                    <div style="font-size: 24px; margin-bottom: 8px;">👤</div>
-                    <div id="userName" style="font-weight: 600;"></div>
-                </div>
-                <div class="profile-item">
-                    <div style="font-size: 24px; margin-bottom: 8px;">🆔</div>
-                    <div id="userId" style="font-family: monospace; font-size: 14px;"></div>
-                </div>
-            </div>
-            <div style="text-align: center; margin-top: 20px;">
-                <div style="font-size: 18px; opacity: 0.9;">Заказов: <span id="ordersCount">0</span></div>
-            </div>
+            <h1>🚕 Такси Енакиево — Горловка</h1>
+            <p style="opacity:0.9;">Быстро • Надёжно • По ДНР</p>
         </div>
 
         <!-- История заказов -->
         <div class="glass-card">
-            <h3 style="margin-bottom: 20px;">📋 Последние заказы</h3>
+            <h3 style="margin-bottom:20px;">📋 Последние заказы</h3>
             <div class="orders-list" id="ordersList">
-                <div style="text-align: center; opacity: 0.6; padding: 40px;">
-                    История заказов появится здесь
-                </div>
+                <div style="text-align:center; opacity:0.6; padding:40px;">История появится после первого заказа</div>
             </div>
         </div>
 
         <!-- Форма заказа -->
         <div class="glass-card">
-            <h3 style="margin-bottom: 20px;">📍 Новый заказ</h3>
+            <h3 style="margin-bottom:20px;">📍 Новый заказ</h3>
             
-            <input type="text" id="from" placeholder="Откуда: ул. Ленина, Центр, Рынок...">
-            <input type="text" id="to" placeholder="Куда: ул. Советская, Донецк, Зугрэс...">
-            <input type="tel" id="phone" placeholder="📱 +7 (XXX) XXX-XX-XX">
-            <input type="text" id="comment" placeholder="Пассажиров 2 / Багаж / Детское кресло">
+            <input type="text" id="from" placeholder="Откуда: ул. Ленина, Ватутина, Горловская Дивизия...">
+            <input type="text" id="to" placeholder="Куда: ул. Металлургов, Центр Горловки, Рудакова...">
+            <input type="tel" id="phone" placeholder="📱 +7949... или 071-...">
+            <input type="text" id="comment" placeholder="Комментарий (пассажиры, багаж...)">
 
-            <div id="priceCard" class="glass-card" style="margin: 20px 0; font-size: 24px;">
+            <div id="priceCard" class="glass-card" style="margin:20px 0;">
                 Введите адреса для расчёта
             </div>
 
-            <button class="btn btn-primary" onclick="calculatePrice()" id="calcBtn">💰 Рассчитать цену</button>
-            <button class="btn btn-primary" onclick="sendOrder()" id="orderBtn" style="display: none;">✅ Заказать такси</button>
+            <button class="btn" onclick="calculatePrice()" id="calcBtn">💰 Рассчитать цену</button>
+            <button class="btn" onclick="sendOrder()" id="orderBtn" style="display:none;">✅ Заказать такси</button>
         </div>
     </div>
 
@@ -164,36 +153,41 @@
         Telegram.WebApp.MainButton.setText("🚀 Заказать").setParams({color: '#4ecdc4'}).hide().onClick(sendOrder);
 
         const user = Telegram.WebApp.initDataUnsafe.user;
-        const orders = JSON.parse(localStorage.getItem('orders') || '[]');
+        const orders = JSON.parse(localStorage.getItem('orders_dnr') || '[]');
 
-        // База адресов Енакиево (реальные улицы/районы)
-        const ENAKIEVO_ADDRESSES = {
-            streets: ['Ленина', 'Советская', 'Мира', 'Октябрьская', 'Кирова', 'Гагарина', 'Пушкина', 'Шевченко'],
-            districts: ['Центр', 'Северный', 'Южный', 'Западный', 'Восточный', 'Рынок', 'Школа №1', 'Школа №5'],
-            nearby: ['Зугрэс', 'Шахтёрск', 'Харцызск', 'Донецк', 'Макеевка']
-        };
+        // Большой список ключевых слов (Енакиево + пос. Ватутина + Горловка)
+        const KEYWORDS = [
+            // Енакиево
+            'ленина', 'металлургов', 'берегового', 'горняков', 'забойщиков', 'тиунова', 'советская', 'мира', 'октябрьская',
+            'кирова', 'гагарина', 'пушкина', 'шевченко', 'ватутина', 'северный', 'южный', 'центр', 'рынок', 'автовокзал',
+            'поликлиника', 'больница', 'ж/д вокзал', 'школа', 'магнит', 'пятерочка', 'атб',
+            // Горловка
+            'горловской дивизии', 'рудакова', 'интернациональная', 'первомайская', 'остапенка', 'пушкинская', 'матросова',
+            'черникова', 'калининский', 'никитовский', 'центрально-городской', 'строй', 'комсомольск', 'старатель'
+        ];
 
-        // Заполняем профиль
-        document.getElementById('userName').textContent = user.first_name + (user.last_name ? ' ' + user.last_name : '');
-        document.getElementById('userId').textContent = user.id;
-        document.getElementById('ordersCount').textContent = orders.length;
+        // Профиль
+        document.getElementById('modalName').textContent = user.first_name + (user.last_name ? ' ' + user.last_name : '');
+        document.getElementById('modalId').textContent = user.id;
+        document.getElementById('modalOrders').textContent = orders.length;
 
-        // Показываем историю
-        showOrders();
+        function openProfile() {
+            document.getElementById('profileModal').style.display = 'flex';
+            document.getElementById('modalOrders').textContent = orders.length;
+        }
+        function closeProfile() {
+            document.getElementById('profileModal').style.display = 'none';
+        }
 
-        function validateAddress(address) {
-            const cleanAddr = address.toLowerCase().replace(/[.,;:!?]/g, '');
-            const words = cleanAddr.split(/\s+/);
-            
-            return words.some(word => 
-                ENAKIEVO_ADDRESSES.streets.some(street => street.toLowerCase().includes(word)) ||
-                ENAKIEVO_ADDRESSES.districts.some(district => district.toLowerCase().includes(word)) ||
-                ENAKIEVO_ADDRESSES.nearby.some(place => place.toLowerCase().includes(word))
-            );
+        function isValidAddress(address) {
+            if (!address) return false;
+            const lower = address.toLowerCase().replace(/[^\w\s]/g, ' ').trim();
+            return KEYWORDS.some(kw => lower.includes(kw));
         }
 
         function validatePhone(phone) {
-            return /^\+?[\d\s\-\(\)]{10,15}$/.test(phone.replace(/\s/g, ''));
+            const cleaned = phone.replace(/\D/g, '');
+            return cleaned.length >= 10 && ['7', '380', '071', '949'].some(prefix => cleaned.startsWith(prefix));
         }
 
         function calculatePrice() {
@@ -201,54 +195,31 @@
             const to = document.getElementById('to').value.trim();
             const phone = document.getElementById('phone').value.trim();
 
-            // Очистка ошибок
             document.querySelectorAll('input').forEach(el => el.classList.remove('error'));
-            document.getElementById('priceCard').innerHTML = '';
+            let errorMsg = '';
 
-            let errors = [];
+            if (!from || !isValidAddress(from)) { document.getElementById('from').classList.add('error'); errorMsg += '❌ Неверный адрес "Откуда"<br>'; }
+            if (!to || !isValidAddress(to)) { document.getElementById('to').classList.add('error'); errorMsg += '❌ Неверный адрес "Куда"<br>'; }
+            if (!phone || !validatePhone(phone)) { document.getElementById('phone').classList.add('error'); errorMsg += '❌ Проверьте телефон<br>'; }
 
-            if (!from) errors.push('from');
-            else if (!validateAddress(from)) {
-                errors.push('from');
-                document.getElementById('priceCard').innerHTML += '❌ Неверный адрес "Откуда" (ул. Ленина, Центр, Зугрэс...)';
-            }
-
-            if (!to) errors.push('to');
-            else if (!validateAddress(to)) {
-                errors.push('to');
-                document.getElementById('priceCard').innerHTML += '<br>❌ Неверный адрес "Куда"';
-            }
-
-            if (!phone) errors.push('phone');
-            else if (!validatePhone(phone)) {
-                errors.push('phone');
-                document.getElementById('priceCard').innerHTML += '<br>❌ Проверьте номер телефона';
-            }
-
-            if (errors.length > 0) {
-                errors.forEach(id => document.getElementById(id).classList.add('error'));
-                document.getElementById('calcBtn').style.display = 'block';
+            if (errorMsg) {
+                document.getElementById('priceCard').innerHTML = errorMsg;
                 document.getElementById('orderBtn').style.display = 'none';
                 Telegram.WebApp.MainButton.hide();
                 return;
             }
 
-            // ТОЧНЫЙ расчёт цены
-            let price = 150; // База по Енакиево
-            
-            const toLower = to.toLowerCase();
-            if (toLower.includes('донецк')) price += 500;
-            else if (toLower.includes('зугрэс')) price += 150;
-            else if (toLower.includes('шахтёрск')) price += 250;
-            else if (toLower.includes('харцызск')) price += 300;
-            else if (toLower.includes('макеевка')) price += 400;
+            // Цена: по городу 150-350, межгород +400-600
+            let price = 200;
+            if ((from.toLowerCase().includes('горловк') || to.toLowerCase().includes('горловк')) &&
+                !(from.toLowerCase().includes('горловк') && to.toLowerCase().includes('горловк'))) {
+                price += 500;
+            }
+            price += Math.floor(Math.random() * 200);
 
-            price += Math.floor(Math.random() * 80) + 20; // Ночной/час пик
-
-            const time = Math.floor(Math.random() * 10) + 5;
             document.getElementById('priceCard').innerHTML = `
-                💰 <strong>${price} ₽</strong><br>
-                <small>⏱️ Приезд через ${time}-${time+10} мин</small>
+                💰 <strong>${price} ₽</strong> наличкой<br>
+                <small>⏱️ 10–40 мин в пути</small>
             `;
 
             document.getElementById('calcBtn').style.display = 'none';
@@ -257,18 +228,18 @@
         }
 
         function sendOrder() {
+            const price = document.getElementById('priceCard').textContent.match(/\d+/)[0];
             const orderData = {
                 from: document.getElementById('from').value.trim(),
                 to: document.getElementById('to').value.trim(),
                 phone: document.getElementById('phone').value.trim(),
                 comment: document.getElementById('comment').value.trim(),
-                price: document.getElementById('priceCard').textContent.match(/\d+/)[0],
+                price: price,
                 time: new Date().toLocaleString('ru-RU')
             };
 
-            // Сохраняем в историю
             orders.unshift(orderData);
-            localStorage.setItem('orders', JSON.stringify(orders.slice(0, 50))); // Макс 50 заказов
+            localStorage.setItem('orders_dnr', JSON.stringify(orders.slice(0, 50)));
             showOrders();
 
             Telegram.WebApp.sendData(JSON.stringify(orderData));
@@ -277,18 +248,18 @@
 
         function showOrders() {
             const list = document.getElementById('ordersList');
-            document.getElementById('ordersCount').textContent = orders.length;
-
             if (orders.length === 0) return;
 
-            list.innerHTML = orders.slice(0, 5).map(order => `
+            list.innerHTML = orders.slice(0, 5).map(o => `
                 <div class="order-item">
-                    <div class="order-time">${order.time}</div>
-                    <div class="order-route">${order.from} → ${order.to}</div>
-                    <div class="order-price">💰 ${order.price} ₽</div>
+                    <div style="font-size:14px; opacity:0.8;">${o.time}</div>
+                    <div style="font-size:18px; font-weight:600;">${o.from} → ${o.to}</div>
+                    <div style="font-size:20px; color:var(--neon);">💰 ${o.price} ₽</div>
                 </div>
             `).join('');
         }
+
+        showOrders();
     </script>
 </body>
 </html>
