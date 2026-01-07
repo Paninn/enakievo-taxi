@@ -12,107 +12,273 @@
             --bg: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
             --card: rgba(255, 255, 255, 0.09);
             --card-hover: rgba(255, 255, 255, 0.18);
+            --text: #f1f5f9;
+            --text-secondary: rgba(255, 255, 255, 0.7);
             --accent: #22d3ee;
             --green: #4ade80;
             --red: #f87171;
             --purple: #c084fc;
             --yellow: #fbbf24;
-            --text: #f1f5f9;
             --shadow: 0 24px 48px rgba(0,0,0,0.5);
-            --radius: 32px;
-            --transition: all 0.4s ease;
+            --input-bg: rgba(255,255,255,0.1);
+            --border-focus: #22d3ee;
         }
+
+        body.light-theme {
+            --bg: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+            --card: rgba(255, 255, 255, 0.85);
+            --card-hover: rgba(255, 255, 255, 0.95);
+            --text: #1e293b;
+            --text-secondary: rgba(30, 41, 59, 0.7);
+            --accent: #0891b2;
+            --green: #22c55e;
+            --red: #ef4444;
+            --purple: #9333ea;
+            --yellow: #f59e0b;
+            --shadow: 0 24px 48px rgba(0,0,0,0.12);
+            --input-bg: rgba(15, 23, 42, 0.06);
+            --border-focus: #0891b2;
+        }
+
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
-        .container { max-width: 560px; margin: 0 auto; padding: 32px; padding-top: 110px; } /* Шире */
-        .header { text-align: center; padding: 50px 0; }
-        h1 { font-size: 52px; font-weight: 800; }
-        .subtitle { opacity: 0.85; font-size: 24px; margin-top: 12px; }
-        #profileBtn { position: fixed; top: 28px; right: 28px; z-index: 1000; background: var(--card); backdrop-filter: blur(20px); border: none; border-radius: 50%; width: 70px; height: 70px; font-size: 40px; cursor: pointer; box-shadow: var(--shadow); transition: var(--transition); }
-        #profileBtn:hover { transform: scale(1.15); }
-        .card { background: var(--card); backdrop-filter: blur(25px); border-radius: var(--radius); padding: 48px; margin: 40px 0; box-shadow: var(--shadow); transition: var(--transition); } /* Больше отступов */
-        .card:hover { transform: translateY(-10px); background: var(--card-hover); }
-        #map { height: 480px; border-radius: var(--radius); margin: 40px 0; box-shadow: 0 20px 40px rgba(0,0,0,0.4); } /* Выше карта */
-        input { width: 100%; padding: 32px 28px; margin: 28px 0; background: rgba(255,255,255,0.1); border: 2px solid transparent; border-radius: var(--radius); font-size: 24px; color: var(--text); transition: var(--transition); } /* Большие поля */
-        input::placeholder { color: rgba(255,255,255,0.6); font-size: 22px; }
-        input:focus { border-color: var(--accent); background: rgba(255,255,255,0.15); }
-        .btn { width: 100%; padding: 36px; margin: 40px 0; border: none; border-radius: var(--radius); font-size: 28px; font-weight: 700; cursor: pointer; transition: var(--transition); box-shadow: 0 16px 32px rgba(0,0,0,0.3); } /* Большие кнопки */
-        .btn-accent { background: linear-gradient(135deg, var(--accent), #0891b2); }
-        .btn-green { background: linear-gradient(135deg, var(--green), #22c55e); }
-        .btn-red { background: linear-gradient(135deg, var(--red), #ef4444); }
-        .btn-purple { background: linear-gradient(135deg, var(--purple), #9333ea); }
-        .btn:hover { transform: translateY(-8px); box-shadow: 0 24px 48px rgba(0,0,0,0.4); }
-        #priceCard { text-align: center; font-size: 44px; font-weight: 800; padding: 56px; min-height: 180px; display: flex; flex-direction: column; justify-content: center; }
-        .order-item { background: rgba(255,255,255,0.06); padding: 40px; border-radius: var(--radius); margin: 32px 0; border-left: 10px solid var(--accent); position: relative; }
-        .action-btn { position: absolute; top: 24px; right: 24px; background: rgba(255,255,255,0.2); color: white; border: none; border-radius: 24px; padding: 16px 32px; font-size: 20px; cursor: pointer; }
-        #passengerPanel, #driverPanel, #adminPanel { display: none; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            transition: all 0.6s ease;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            padding-top: 100px;
+        }
+
+        .header {
+            text-align: center;
+            padding: 40px 0;
+        }
+        h1 { font-size: 52px; font-weight: 800; letter-spacing: -2px; }
+        .subtitle { font-size: 22px; opacity: 0.85; margin-top: 12px; }
+
+        #profileBtn, #themeBtn {
+            position: fixed; top: 20px; z-index: 1000;
+            background: var(--card); backdrop-filter: blur(20px);
+            border: none; border-radius: 50%; width: 60px; height: 60px;
+            font-size: 32px; cursor: pointer; box-shadow: var(--shadow);
+            transition: all 0.4s ease;
+        }
+        #profileBtn { right: 90px; }
+        #themeBtn { right: 20px; }
+        #profileBtn:hover, #themeBtn:hover { transform: scale(1.12); }
+
+        .card {
+            background: var(--card);
+            backdrop-filter: blur(25px);
+            border-radius: 32px;
+            padding: 36px;
+            box-shadow: var(--shadow);
+            transition: all 0.4s ease;
+        }
+        .card:hover { transform: translateY(-6px); background: var(--card-hover); }
+
+        /* Горизонтальный layout для пассажира */
+        .main-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 32px;
+            margin-top: 20px;
+        }
+
+        #map {
+            height: 600px;
+            border-radius: 28px;
+            box-shadow: 0 16px 40px rgba(0,0,0,0.3);
+        }
+
+        input {
+            width: 100%; padding: 22px 20px; margin: 16px 0;
+            background: var(--input-bg); border: 2px solid transparent;
+            border-radius: 24px; font-size: 19px; color: var(--text);
+            transition: all 0.4s ease;
+        }
+        input::placeholder { color: var(--text-secondary); }
+        input:focus { outline: none; border-color: var(--border-focus); transform: scale(1.01); }
+
+        .btn {
+            width: 100%; padding: 24px; margin: 20px 0;
+            border: none; border-radius: 24px; font-size: 21px; font-weight: 700;
+            cursor: pointer; transition: all 0.4s ease;
+            box-shadow: 0 12px 24px rgba(0,0,0,0.3);
+        }
+        .btn-accent { background: linear-gradient(135deg, var(--accent), #06b6d4); color: white; }
+        .btn-green { background: linear-gradient(135deg, var(--green), #16a34a); color: white; }
+        .btn-red { background: linear-gradient(135deg, var(--red), #dc2626); color: white; }
+        .btn-purple { background: linear-gradient(135deg, var(--purple), #7c3aed); color: white; }
+        .btn:hover { transform: translateY(-4px); }
+
+        #priceCard {
+            text-align: center; font-size: 40px; font-weight: 800;
+            padding: 40px; margin: 20px 0;
+            min-height: 140px; display: flex; flex-direction: column;
+            justify-content: center; align-items: center;
+        }
+
+        .orders-section {
+            margin-top: 40px;
+        }
+        .order-item {
+            background: rgba(255,255,255,0.06);
+            padding: 24px; border-radius: 24px; margin: 16px 0;
+            border-left: 6px solid var(--accent); position: relative;
+        }
+        body.light-theme .order-item { background: rgba(15,23,42,0.05); }
+
+        .action-btn {
+            position: absolute; top: 16px; right: 16px;
+            background: rgba(255,255,255,0.2); color: white;
+            border: none; border-radius: 16px; padding: 10px 18px;
+            font-size: 15px; cursor: pointer;
+        }
+
+        /* Админ и водитель — тоже в гриде */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 24px;
+            margin: 32px 0;
+        }
+        .stat-card {
+            text-align: center; padding: 32px;
+            background: rgba(255,255,255,0.06); border-radius: 24px;
+        }
+        body.light-theme .stat-card { background: rgba(15,23,42,0.05); }
+        .stat-number { font-size: 42px; font-weight: 800; }
+
+        /* Мобильная адаптация */
+        @media (max-width: 900px) {
+            .main-grid {
+                grid-template-columns: 1fr;
+            }
+            #map { height: 400px; }
+            .container { padding-top: 120px; }
+            #profileBtn { right: 80px; }
+            #themeBtn { right: 10px; }
+            h1 { font-size: 42px; }
+        }
     </style>
 </head>
 <body>
     <button id="profileBtn" onclick="openProfile()">👤</button>
+    <button id="themeBtn" onclick="toggleTheme()">🌙</button>
 
     <div id="profileModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);backdrop-filter:blur(12px);z-index:999;justify-content:center;align-items:center;" onclick="if(event.target===this)closeProfile()">
-        <div style="background:var(--card);backdrop-filter:blur(30px);border-radius:var(--radius);padding:56px;width:90%;max-width:480px;text-align:center;box-shadow:var(--shadow);">
-            <h2 style="font-size:40px;margin-bottom:32px;">Профиль</h2>
-            <p style="font-size:32px;margin:24px 0;" id="modalName"></p>
-            <p style="opacity:0.8;font-size:22px;">ID: <span id="modalId"></span></p>
-            <p style="font-size:28px;margin:32px 0;">Роль: <strong id="modalRole">Пассажир</strong></p>
+        <div style="background:var(--card);backdrop-filter:blur(30px);border-radius:32px;padding:40px;width:90%;max-width:460px;text-align:center;box-shadow:var(--shadow);">
+            <h2 style="font-size:34px;margin-bottom:24px;">Профиль</h2>
+            <p style="font-size:28px;margin:20px 0;" id="modalName"></p>
+            <p style="opacity:0.8;font-size:19px;">ID: <span id="modalId"></span></p>
+            <p style="font-size:24px;margin:28px 0;">Роль: <strong id="modalRole">Пассажир</strong></p>
+            <div id="adminTools" style="display:none;margin-top:36px;">
+                <p style="font-size:22px;color:var(--purple);">👑 Админ-панель активна</p>
+            </div>
         </div>
     </div>
 
     <div class="container">
         <div class="header">
             <h1>Такси ДНР</h1>
-            <p class="subtitle">Енакиево • Горловка • Донецк</p>
+            <p class="subtitle">Енакиево • Горловка • Донецк • Макеевка</p>
         </div>
 
-        <!-- ПАНЕЛЬ ПАССАЖИРА -->
+        <!-- АДМИН ПАНЕЛЬ -->
+        <div id="adminPanel" style="display:none;">
+            <div class="card">
+                <h2 style="text-align:center;font-size:36px;margin-bottom:32px;">👑 Админ-панель</h2>
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-number" id="totalOrdersStat">0</div>
+                        <div>Всего заказов</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number" id="driversCount">0</div>
+                        <div>Водителей</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="main-grid">
+                <div class="card">
+                    <h3 style="text-align:center;margin-bottom:24px;">Назначить роль</h3>
+                    <input type="number" id="roleUserId" placeholder="ID пользователя">
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:20px;">
+                        <button class="btn btn-green" onclick="setRole('driver')">Водитель 🚗</button>
+                        <button class="btn btn-purple" onclick="setRole('admin')">Админ 👑</button>
+                    </div>
+                    <button class="btn btn-red" style="margin-top:16px;" onclick="setRole('passenger')">Убрать роль</button>
+                </div>
+
+                <div class="card">
+                    <h3 style="text-align:center;margin-bottom:24px;">Последние заказы</h3>
+                    <div id="adminOrdersList" style="max-height:500px;overflow-y:auto;"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ВОДИТЕЛЬ ПАНЕЛЬ -->
+        <div id="driverPanel" style="display:none;">
+            <div class="main-grid">
+                <div class="card">
+                    <h2 style="text-align:center;font-size:34px;">Панель водителя</h2>
+                    <p style="text-align:center;font-size:38px;margin:40px 0;" id="driverStatus">Оффлайн</p>
+                    <button class="btn btn-green" id="lineBtn" onclick="toggleOnline()">Выйти на линию</button>
+                </div>
+                <div class="card">
+                    <h3 style="text-align:center;margin-bottom:24px;">Доступные заказы</h3>
+                    <div id="driverOrdersList">
+                        <p style="text-align:center;opacity:0.6;font-size:18px;">Заказы появятся, когда вы на линии</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ПАССАЖИР ПАНЕЛЬ -->
         <div id="passengerPanel">
-            <div class="card">
-                <button class="btn btn-accent" onclick="locateUser()">📍 Моё местоположение</button>
-                <div id="map"></div>
-                <p style="text-align:center;opacity:0.7;margin-top:32px;font-size:20px;">Кликните на карте: сначала Откуда → потом Куда</p>
-            </div>
+            <div class="main-grid">
+                <!-- Карта -->
+                <div class="card">
+                    <button class="btn btn-accent" onclick="locateUser()" style="margin-bottom:20px;">📍 Моё местоположение</button>
+                    <div id="map"></div>
+                    <p style="text-align:center;opacity:0.8;margin-top:20px;">
+                        Кликните на карте: сначала <strong>Откуда</strong> → потом <strong>Куда</strong>
+                    </p>
+                </div>
 
-            <div class="card">
-                <input type="text" id="from" placeholder="Откуда (Енакиево Ленина 15)">
-                <input type="text" id="to" placeholder="Куда (Горловка Рудакова 10)">
-                <input type="tel" id="phone" placeholder="Телефон +7XXXXXXXXXX">
-                <input type="text" id="comment" placeholder="Комментарий (необязательно)">
+                <!-- Форма заказа -->
+                <div>
+                    <div class="card">
+                        <input type="text" id="from" placeholder="Откуда (например: Енакиево, Ленина 15)">
+                        <input type="text" id="to" placeholder="Куда (например: Донецк, Артёма 10)">
+                        <input type="tel" id="phone" placeholder="Телефон: +7 (___) ___-__-__">
+                        <input type="text" id="comment" placeholder="Комментарий (необязательно)">
 
-                <div id="priceCard" class="card">Введите адреса для расчёта</div>
+                        <div id="priceCard" class="card">Отметьте точки на карте или введите адреса</div>
 
-                <button class="btn btn-accent" onclick="calculatePrice()" id="calcBtn">Рассчитать цену</button>
-                <button class="btn btn-accent" onclick="sendOrder()" id="orderBtn" style="display:none;">Заказать (наличными)</button>
-            </div>
-
-            <div class="card">
-                <h3 style="text-align:center;margin-bottom:32px;font-size:32px;">Мои заказы</h3>
-                <div id="passengerOrdersList">
-                    <p style="text-align:center;opacity:0.6;">Нет заказов</p>
+                        <button class="btn btn-accent" onclick="calculatePrice()" id="calcBtn">Рассчитать цену</button>
+                        <button class="btn btn-green" onclick="sendOrder()" id="orderBtn" style="display:none;">Заказать такси</button>
+                    </div>
                 </div>
             </div>
-        </div>
 
-        <!-- ПАНЕЛЬ ВОДИТЕЛЯ -->
-        <div id="driverPanel">
-            <div class="card">
-                <h2 style="text-align:center;font-size:40px;">Панель водителя</h2>
-                <p style="text-align:center;font-size:48px;margin:64px 0;" id="driverStatus">Оффлайн</p>
-                <button class="btn btn-green" id="lineBtn" onclick="toggleOnline()">Выйти на линию</button>
-            </div>
-        </div>
-
-        <!-- ПАНЕЛЬ АДМИНА -->
-        <div id="adminPanel">
-            <div class="card">
-                <h2 style="text-align:center;font-size:40px;">👑 Админ-панель</h2>
-                <input type="number" id="roleUserId" placeholder="ID пользователя">
-                <div style="display:grid;grid-template-columns:1fr 1fr;gap:32px;margin-top:40px;">
-                    <button class="btn btn-green" onclick="setRole('driver')">Водитель</button>
-                    <button class="btn btn-purple" onclick="setRole('admin')">Админ</button>
+            <!-- Мои заказы (полная ширина) -->
+            <div class="orders-section">
+                <div class="card">
+                    <h3 style="text-align:center;margin-bottom:24px;font-size:30px;">Мои заказы</h3>
+                    <div id="passengerOrdersList">
+                        <p style="text-align:center;opacity:0.6;">У вас пока нет заказов</p>
+                    </div>
                 </div>
-                <button class="btn btn-red" style="margin-top:32px;" onclick="setRole('passenger')">Убрать роль</button>
             </div>
         </div>
     </div>
@@ -120,167 +286,180 @@
     <script>
         Telegram.WebApp.ready();
         Telegram.WebApp.expand();
-        Telegram.WebApp.MainButton.setText("Заказать").hide().onClick(sendOrder);
 
-        const user = Telegram.WebApp.initDataUnsafe.user || { id: 999, first_name: 'Тест' };
+        const user = Telegram.WebApp.initDataUnsafe.user || { id: 123456, first_name: 'Тест' };
         const userId = user.id;
         const fullName = user.first_name + (user.last_name ? ' ' + user.last_name : '');
 
         document.getElementById('modalName').textContent = fullName;
         document.getElementById('modalId').textContent = userId;
 
+        // Тема
+        const savedTheme = localStorage.getItem('taxi_theme') || 'dark';
+        if (savedTheme === 'light') {
+            document.body.classList.add('light-theme');
+            document.getElementById('themeBtn').textContent = '☀️';
+        }
+
+        window.toggleTheme = () => {
+            document.body.classList.toggle('light-theme');
+            const isLight = document.body.classList.contains('light-theme');
+            document.getElementById('themeBtn').textContent = isLight ? '☀️' : '🌙';
+            localStorage.setItem('taxi_theme', isLight ? 'light' : 'dark');
+        };
+
+        // Роли
         let roles = JSON.parse(localStorage.getItem('taxi_roles') || '{}');
         let orders = JSON.parse(localStorage.getItem('taxi_orders') || '[]');
+        let allOrders = JSON.parse(localStorage.getItem('taxi_all_orders') || '[]');
 
         let currentRole = roles[userId] || 'passenger';
 
-        document.getElementById(currentRole + 'Panel').style.display = 'block';
-        document.getElementById('modalRole').textContent = currentRole === 'admin' ? '👑 Администратор' : currentRole === 'driver' ? 'Водитель 🚗' : 'Пассажир';
+        document.getElementById(`${currentRole}Panel`).style.display = 'block';
+        document.getElementById('modalRole').textContent = 
+            currentRole === 'admin' ? '👑 Администратор' : 
+            currentRole === 'driver' ? 'Водитель 🚗' : 'Пассажир';
+        if (currentRole === 'admin') document.getElementById('adminTools').style.display = 'block';
 
-        // Карта для пассажира
-        let map, fromMarker, toMarker, fromCoords, toCoords;
-        let isFrom = true;
-
+        // Карта (пассажир)
         if (currentRole === 'passenger') {
-            map = L.map('map').setView([48.23, 38.03], 12);
-            L.tileLayer('https://tile2.maps.2gis.com/tiles?x={x}&y={y}&z={z}&v=1', {
-                attribution: '© 2GIS'
-            }).addTo(map);
+            const map = L.map('map').setView([48.23, 38.03], 11);
+            L.tileLayer('https://tile2.maps.2gis.com/tiles?x={x}&y={y}&z={z}&v=1', { attribution: '© 2GIS' }).addTo(map);
 
-            map.on('click', function(e) {
+            let fromMarker, toMarker, fromCoords, toCoords, isFrom = true;
+
+            map.on('click', e => {
                 const latlng = e.latlng;
                 if (isFrom) {
                     fromCoords = latlng;
                     if (fromMarker) fromMarker.remove();
-                    fromMarker = L.marker(latlng).addTo(map).bindPopup('Откуда').openPopup();
-                    document.getElementById('from').value = 'По карте (ДНР)';
+                    fromMarker = L.marker(latlng).addTo(map).bindPopup('📤 Откуда').openPopup();
+                    document.getElementById('from').value = 'Отмечено на карте';
                     isFrom = false;
                 } else {
                     toCoords = latlng;
                     if (toMarker) toMarker.remove();
-                    toMarker = L.marker(latlng).addTo(map).bindPopup('Куда').openPopup();
-                    document.getElementById('to').value = 'По карте (ДНР)';
+                    toMarker = L.marker(latlng).addTo(map).bindPopup('📥 Куда').openPopup();
+                    document.getElementById('to').value = 'Отмечено на карте';
                     isFrom = true;
                 }
             });
 
-            window.locateUser = function() {
-                Telegram.WebApp.requestLocation(function(pos) {
+            window.locateUser = () => {
+                Telegram.WebApp.requestLocation(pos => {
                     const latlng = { lat: pos.latitude, lng: pos.longitude };
-                    map.setView(latlng, 17);
+                    map.setView(latlng, 16);
                     fromCoords = latlng;
                     if (fromMarker) fromMarker.remove();
-                    fromMarker = L.marker(latlng).addTo(map).bindPopup('Вы здесь').openPopup();
+                    fromMarker = L.marker(latlng).addTo(map).bindPopup('📍 Вы здесь').openPopup();
                     document.getElementById('from').value = 'Моё местоположение';
-                }, function() {
-                    alert('Разрешите доступ к геолокации в Telegram!');
-                });
+                }, () => alert('Разрешите геолокацию в Telegram'));
             };
         }
 
-        // Расчёт цены
-        window.calculatePrice = function() {
-            let distance = 10;
-            if (fromCoords && toCoords) {
-                distance = map.distance(fromCoords, toCoords) / 1000;
-            }
+        window.calculatePrice = () => {
+            if (!fromCoords || !toCoords) return alert('Сначала отметьте точки на карте');
+            const distance = map.distance(fromCoords, toCoords) / 1000;
             const price = Math.round(180 + distance * 35 + (distance > 25 ? 400 : 0));
+
             document.getElementById('priceCard').innerHTML = `
-                <div>💰 ${price} ₽ (наличными водителю)</div>
-                <div style="font-size:24px;opacity:0.8;margin-top:16px;">~${distance.toFixed(1)} км</div>
+                <div>💰 ${price} ₽</div>
+                <div style="font-size:22px;opacity:0.8;margin-top:16px;">~${distance.toFixed(1)} км</div>
             `;
             document.getElementById('orderBtn').style.display = 'block';
-            Telegram.WebApp.MainButton.show();
+            document.getElementById('calcBtn').style.display = 'none';
         };
 
-        // Отправка заказа
-        window.sendOrder = function() {
-            const price = document.getElementById('priceCard').textContent.match(/\d+/)[0];
+        window.sendOrder = () => {
+            const price = document.getElementById('priceCard').textContent.match(/(\d+)/)[1];
             const order = {
-                action: 'new_order',
-                userId: userId,
-                fullName: fullName,
+                userId, fullName,
                 from: document.getElementById('from').value,
                 to: document.getElementById('to').value,
                 phone: document.getElementById('phone').value,
-                comment: document.getElementById('comment').value,
-                price: price,
-                time: new Date().toLocaleString('ru-RU')
+                comment: document.getElementById('comment').value || '—',
+                price, time: new Date().toLocaleString('ru-RU')
             };
+
             orders.unshift(order);
+            allOrders.unshift(order);
             localStorage.setItem('taxi_orders', JSON.stringify(orders.slice(0,50)));
-            showOrders();
-            Telegram.WebApp.sendData(JSON.stringify(order));
+            localStorage.setItem('taxi_all_orders', JSON.stringify(allOrders));
+
+            showPassengerOrders();
+            alert('Заказ успешно отправлен!');
+            Telegram.WebApp.sendData(JSON.stringify({ action: 'new_order', order }));
             Telegram.WebApp.close();
         };
 
-        // Отмена заказа
-        window.cancelOrder = function(index) {
-            if (confirm('Отменить заказ?')) {
-                const canceled = orders.splice(index, 1)[0];
-                localStorage.setItem('taxi_orders', JSON.stringify(orders));
-                showOrders();
-                Telegram.WebApp.sendData(JSON.stringify({ action: 'cancel_order', order: canceled }));
-            }
-        };
-
-        // Показ заказов
-        function showOrders() {
+        function showPassengerOrders() {
             const list = document.getElementById('passengerOrdersList');
             if (orders.length === 0) {
-                list.innerHTML = '<p style="text-align:center;opacity:0.6;">Нет заказов</p>';
+                list.innerHTML = '<p style="text-align:center;opacity:0.6;">Заказов нет</p>';
                 return;
             }
-            list.innerHTML = orders.map((o, i) => `
+            list.innerHTML = orders.slice(0, 15).map((o, i) => `
                 <div class="order-item">
-                    <div style="font-size:18px;opacity:0.8;">${o.time}</div>
-                    <div style="font-size:26px;font-weight:600;margin:16px 0;">${o.from} → ${o.to}</div>
-                    <div style="font-size:30px;color:var(--accent);">💰 ${o.price} ₽</div>
-                    <button class="action-btn" onclick="cancelOrder(${i})">Отменить</button>
+                    <div style="font-size:16px;opacity:0.8;">${o.time}</div>
+                    <div style="font-size:22px;font-weight:600;margin:10px 0;">${o.from} → ${o.to}</div>
+                    <div style="font-size:19px;">📱 ${o.phone || 'Не указан'}</div>
+                    <div style="font-size:26px;color:var(--accent);margin-top:8px;">💰 ${o.price} ₽</div>
+                    ${i < 3 ? '<button class="action-btn" onclick="cancelOrder(' + i + ')">Отменить</button>' : ''}
                 </div>
             `).join('');
         }
 
-        // Водитель — выход на линию
-        window.toggleOnline = function() {
-            const btn = document.getElementById('lineBtn');
-            const status = document.getElementById('driverStatus');
-            if (btn.textContent === 'Выйти на линию') {
-                btn.textContent = 'Уйти с линии';
-                btn.className = 'btn btn-red';
-                status.textContent = 'Онлайн';
-                status.style.color = '#4ade80';
-                Telegram.WebApp.sendData(JSON.stringify({ action: 'driver_online', userId }));
-            } else {
-                btn.textContent = 'Выйти на линию';
-                btn.className = 'btn btn-green';
-                status.textContent = 'Оффлайн';
-                status.style.color = '#f87171';
-                Telegram.WebApp.sendData(JSON.stringify({ action: 'driver_offline', userId }));
+        window.cancelOrder = (i) => {
+            if (confirm('Отменить заказ?')) {
+                orders.splice(i, 1);
+                localStorage.setItem('taxi_orders', JSON.stringify(orders));
+                showPassengerOrders();
             }
         };
 
-        // Админ — назначение роли
-        window.setRole = function(newRole) {
-            const targetId = document.getElementById('roleUserId').value.trim();
-            if (!targetId) return alert('Введите ID пользователя');
-            roles[targetId] = newRole;
-            localStorage.setItem('taxi_roles', JSON.stringify(roles));
-            Telegram.WebApp.sendData(JSON.stringify({ action: 'set_role', targetId, newRole }));
-            alert(`Роль "${newRole}" назначена пользователю ${targetId}`);
-        };
+        if (currentRole === 'admin') {
+            document.getElementById('totalOrdersStat').textContent = allOrders.length;
+            document.getElementById('driversCount').textContent = Object.values(roles).filter(r => r === 'driver').length;
 
-        // Профиль
-        window.openProfile = function() {
-            document.getElementById('profileModal').style.display = 'flex';
-        };
-        window.closeProfile = function() {
-            document.getElementById('profileModal').style.display = 'none';
-        };
-
-        if (currentRole === 'passenger') {
-            showOrders();
+            document.getElementById('adminOrdersList').innerHTML = allOrders.slice(0, 30).map(o => `
+                <div class="order-item">
+                    <div style="font-size:15px;opacity:0.8;">${o.time} | ${o.fullName} (ID: ${o.userId})</div>
+                    <div style="font-size:21px;margin:8px 0;">${o.from} → ${o.to}</div>
+                    <div style="font-size:19px;">📱 ${o.phone} | 💬 ${o.comment}</div>
+                    <div style="font-size:24px;color:var(--accent);">💰 ${o.price} ₽</div>
+                </div>
+            `).join('');
         }
+
+        window.toggleOnline = () => {
+            const btn = document.getElementById('lineBtn');
+            const status = document.getElementById('driverStatus');
+            if (btn.textContent.includes('Выйти')) {
+                btn.textContent = 'Выйти на линию';
+                btn.className = 'btn btn-green';
+                status.textContent = 'Оффлайн';
+                status.style.color = 'var(--red)';
+            } else {
+                btn.textContent = 'Уйти с линии';
+                btn.className = 'btn btn-red';
+                status.textContent = 'Онлайн 🚗';
+                status.style.color = 'var(--green)';
+            }
+        };
+
+        window.setRole = (newRole) => {
+            const targetId = document.getElementById('roleUserId').value.trim();
+            if (!targetId) return alert('Введите ID');
+            if (newRole === 'passenger') delete roles[targetId];
+            else roles[targetId] = newRole;
+            localStorage.setItem('taxi_roles', JSON.stringify(roles));
+            alert(`Роль ${newRole} назначена пользователю ${targetId}`);
+        };
+
+        window.openProfile = () => document.getElementById('profileModal').style.display = 'flex';
+        window.closeProfile = () => document.getElementById('profileModal').style.display = 'none';
+
+        if (currentRole === 'passenger') showPassengerOrders();
     </script>
 </body>
 </html>
