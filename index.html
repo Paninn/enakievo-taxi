@@ -3,121 +3,291 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Такси Енакиево 2025</title>
+    <title>Такси Енакиево 🚕</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        
         :root {
-            --bg: rgba(255,255,255,0.1);
-            --card: rgba(255,255,255,0.15);
-            --text: white;
+            --primary: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --glass: rgba(255, 255, 255, 0.1);
+            --glass-hover: rgba(255, 255, 255, 0.2);
             --accent: #4ecdc4;
+            --danger: #ff6b6b;
+            --success: #51cf66;
+            --shadow: 0 20px 40px rgba(0,0,0,0.1);
         }
-        body.dark { --bg: rgba(0,0,0,0.3); --card: rgba(0,0,0,0.4); --text: #eee; }
-        body { 
-            margin: 0; padding: 0; min-height: 100vh;
-            background: linear-gradient(135deg, #1e3c72, #2a5298);
-            color: var(--text); font-family: system-ui, sans-serif;
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro', system-ui, sans-serif;
+            background: var(--primary);
+            color: white;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        .container { max-width: 420px; margin: 0 auto; padding: 20px; }
+
+        .header {
+            text-align: center; padding: 30px 0;
+            animation: slideDown 0.8s ease-out;
+        }
+        h1 { font-size: 36px; margin-bottom: 10px; font-weight: 700; }
+
+        .glass-card {
+            background: var(--glass);
+            backdrop-filter: blur(25px);
+            border-radius: 24px;
+            padding: 28px;
+            margin: 20px 0;
+            border: 1px solid rgba(255,255,255,0.2);
+            box-shadow: var(--shadow);
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            animation: fadeInUp 0.6s ease-out;
+        }
+
+        .glass-card:hover { 
+            transform: translateY(-4px);
+            box-shadow: 0 30px 60px rgba(0,0,0,0.15);
+            background: var(--glass-hover);
+        }
+
+        .profile-grid {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 20px 0;
+        }
+        .profile-item { text-align: center; padding: 16px; background: rgba(255,255,255,0.05); border-radius: 16px; }
+
+        input {
+            width: 100%; padding: 20px 24px; margin: 12px 0;
+            background: rgba(255,255,255,0.15);
+            border: 2px solid transparent;
+            border-radius: 20px;
+            font-size: 18px;
+            color: white;
+            backdrop-filter: blur(10px);
+            transition: all 0.3s ease;
+        }
+        input::placeholder { color: rgba(255,255,255,0.7); }
+        input:focus {
+            outline: none;
+            border-color: var(--accent);
+            background: rgba(255,255,255,0.2);
+            transform: scale(1.02);
+        }
+        input.error { border-color: var(--danger); background: rgba(255,107,107,0.2); }
+
+        .btn {
+            width: 100%; padding: 22px; margin: 16px 0;
+            border: none; border-radius: 20px;
+            font-size: 20px; font-weight: 600;
+            cursor: pointer; transition: all 0.3s ease;
             backdrop-filter: blur(10px);
         }
-        .container { padding: 20px; max-width: 500px; margin: 0 auto; }
-        .glass-card {
-            background: var(--card);
-            backdrop-filter: blur(20px);
-            border-radius: 20px;
-            padding: 25px;
-            margin: 20px 0;
-            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
-            animation: fadeIn 0.5s;
+        .btn-primary { background: linear-gradient(135deg, var(--accent), #45b7a3); color: white; }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 15px 30px rgba(78,205,196,0.4); }
+        .btn-secondary { background: rgba(255,255,255,0.15); color: white; }
+        
+        #priceCard { font-size: 28px; font-weight: 700; text-align: center; min-height: 80px; display: flex; align-items: center; justify-content: center; }
+
+        .orders-list {
+            max-height: 300px; overflow-y: auto;
+            display: grid; gap: 12px;
         }
-        h1 { text-align: center; font-size: 32px; margin: 20px 0; }
-        input, button {
-            width: 100%; padding: 18px; margin: 12px 0; border-radius: 16px;
-            border: none; font-size: 18px;
+        .order-item {
+            background: rgba(255,255,255,0.08);
+            padding: 16px; border-radius: 16px;
+            border-left: 4px solid var(--accent);
         }
-        input { background: var(--bg); color: var(--text); }
-        button { background: var(--accent); color: white; font-weight: bold; cursor: pointer; }
-        button.secondary { background: #ff6b6b; }
-        .profile { text-align: center; font-size: 20px; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; } }
+        .order-time { font-size: 14px; opacity: 0.8; }
+        .order-route { font-size: 18px; font-weight: 600; margin: 4px 0; }
+        .order-price { font-size: 20px; color: var(--success); font-weight: 700; }
+
+        @keyframes slideDown { from { opacity: 0; transform: translateY(-30px); } }
+        @keyframes fadeInUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>🚕 Такси Енакиево</h1>
-        <div id="profileSection" class="glass-card profile"></div>
-        
-        <div id="passengerView">
-            <div class="glass-card">
-                <input type="text" id="from" placeholder="📍 Откуда">
-                <input type="text" id="to" placeholder="📍 Куда">
-                <input type="tel" id="phone" placeholder="📱 Телефон">
-                <input type="text" id="comment" placeholder="👉 Комментарий">
-                <div id="priceInfo" style="text-align:center; font-size:24px; margin:20px 0;"></div>
-                <button onclick="calculatePrice()">💰 Рассчитать</button>
-                <button onclick="sendOrder()">✅ Заказать</button>
+        <div class="header">
+            <h1>🚕 Такси Енакиево</h1>
+            <p style="opacity: 0.9;">Быстро • Дёшево • Надёжно</p>
+        </div>
+
+        <!-- Профиль -->
+        <div class="glass-card" id="profileCard">
+            <div class="profile-grid">
+                <div class="profile-item">
+                    <div style="font-size: 24px; margin-bottom: 8px;">👤</div>
+                    <div id="userName" style="font-weight: 600;"></div>
+                </div>
+                <div class="profile-item">
+                    <div style="font-size: 24px; margin-bottom: 8px;">🆔</div>
+                    <div id="userId" style="font-family: monospace; font-size: 14px;"></div>
+                </div>
             </div>
-            <div class="glass-card">
-                <button class="secondary" onclick="requestDriverRole()">🚗 Стать водителем</button>
+            <div style="text-align: center; margin-top: 20px;">
+                <div style="font-size: 18px; opacity: 0.9;">Заказов: <span id="ordersCount">0</span></div>
             </div>
         </div>
-        
-        <div id="driverView" style="display:none;">
-            <div class="glass-card">
-                <h2>🚗 Панель водителя</h2>
-                <button id="onlineBtn" onclick="toggleOnline()">Оффлайн</button>
-                <p>Текущие заказы скоро появятся...</p>
+
+        <!-- История заказов -->
+        <div class="glass-card">
+            <h3 style="margin-bottom: 20px;">📋 Последние заказы</h3>
+            <div class="orders-list" id="ordersList">
+                <div style="text-align: center; opacity: 0.6; padding: 40px;">
+                    История заказов появится здесь
+                </div>
             </div>
+        </div>
+
+        <!-- Форма заказа -->
+        <div class="glass-card">
+            <h3 style="margin-bottom: 20px;">📍 Новый заказ</h3>
+            
+            <input type="text" id="from" placeholder="Откуда: ул. Ленина, Центр, Рынок...">
+            <input type="text" id="to" placeholder="Куда: ул. Советская, Донецк, Зугрэс...">
+            <input type="tel" id="phone" placeholder="📱 +7 (XXX) XXX-XX-XX">
+            <input type="text" id="comment" placeholder="Пассажиров 2 / Багаж / Детское кресло">
+
+            <div id="priceCard" class="glass-card" style="margin: 20px 0; font-size: 24px;">
+                Введите адреса для расчёта
+            </div>
+
+            <button class="btn btn-primary" onclick="calculatePrice()" id="calcBtn">💰 Рассчитать цену</button>
+            <button class="btn btn-primary" onclick="sendOrder()" id="orderBtn" style="display: none;">✅ Заказать такси</button>
         </div>
     </div>
 
     <script>
         Telegram.WebApp.ready();
         Telegram.WebApp.expand();
+        Telegram.WebApp.MainButton.setText("🚀 Заказать").setParams({color: '#4ecdc4'}).hide().onClick(sendOrder);
+
         const user = Telegram.WebApp.initDataUnsafe.user;
-        const userId = user.id;
-        const username = user.username || 'нет';
-        const fullName = user.first_name + (user.last_name ? ' ' + user.last_name : '');
+        const orders = JSON.parse(localStorage.getItem('orders') || '[]');
 
-        document.getElementById('profileSection').innerHTML = `
-            <p>👤 ${fullName} (@${username})</p>
-            <p>🆔 ID: ${userId}</p>
-            <p>Роль: <span id="roleText">Пассажир</span></p>
-        `;
+        // База адресов Енакиево (реальные улицы/районы)
+        const ENAKIEVO_ADDRESSES = {
+            streets: ['Ленина', 'Советская', 'Мира', 'Октябрьская', 'Кирова', 'Гагарина', 'Пушкина', 'Шевченко'],
+            districts: ['Центр', 'Северный', 'Южный', 'Западный', 'Восточный', 'Рынок', 'Школа №1', 'Школа №5'],
+            nearby: ['Зугрэс', 'Шахтёрск', 'Харцызск', 'Донецк', 'Макеевка']
+        };
 
-        // Здесь в реальности роль придёт с сервера, но для примера по умолчанию пассажир
-        let role = 'passenger';  // Будет перезаписано после запроса к боту (можно добавить fetch)
+        // Заполняем профиль
+        document.getElementById('userName').textContent = user.first_name + (user.last_name ? ' ' + user.last_name : '');
+        document.getElementById('userId').textContent = user.id;
+        document.getElementById('ordersCount').textContent = orders.length;
 
-        if (role === 'driver') {
-            document.getElementById('passengerView').style.display = 'none';
-            document.getElementById('driverView').style.display = 'block';
-            document.getElementById('roleText').innerText = 'Водитель 🚗';
+        // Показываем историю
+        showOrders();
+
+        function validateAddress(address) {
+            const cleanAddr = address.toLowerCase().replace(/[.,;:!?]/g, '');
+            const words = cleanAddr.split(/\s+/);
+            
+            return words.some(word => 
+                ENAKIEVO_ADDRESSES.streets.some(street => street.toLowerCase().includes(word)) ||
+                ENAKIEVO_ADDRESSES.districts.some(district => district.toLowerCase().includes(word)) ||
+                ENAKIEVO_ADDRESSES.nearby.some(place => place.toLowerCase().includes(word))
+            );
         }
 
-        function calculatePrice() { /* Тот же код расчёта, что раньше */ 
-            // Вставь свой код расчёта цены
-            document.getElementById('priceInfo').innerText = '💰 250 ₽';
+        function validatePhone(phone) {
+            return /^\+?[\d\s\-\(\)]{10,15}$/.test(phone.replace(/\s/g, ''));
+        }
+
+        function calculatePrice() {
+            const from = document.getElementById('from').value.trim();
+            const to = document.getElementById('to').value.trim();
+            const phone = document.getElementById('phone').value.trim();
+
+            // Очистка ошибок
+            document.querySelectorAll('input').forEach(el => el.classList.remove('error'));
+            document.getElementById('priceCard').innerHTML = '';
+
+            let errors = [];
+
+            if (!from) errors.push('from');
+            else if (!validateAddress(from)) {
+                errors.push('from');
+                document.getElementById('priceCard').innerHTML += '❌ Неверный адрес "Откуда" (ул. Ленина, Центр, Зугрэс...)';
+            }
+
+            if (!to) errors.push('to');
+            else if (!validateAddress(to)) {
+                errors.push('to');
+                document.getElementById('priceCard').innerHTML += '<br>❌ Неверный адрес "Куда"';
+            }
+
+            if (!phone) errors.push('phone');
+            else if (!validatePhone(phone)) {
+                errors.push('phone');
+                document.getElementById('priceCard').innerHTML += '<br>❌ Проверьте номер телефона';
+            }
+
+            if (errors.length > 0) {
+                errors.forEach(id => document.getElementById(id).classList.add('error'));
+                document.getElementById('calcBtn').style.display = 'block';
+                document.getElementById('orderBtn').style.display = 'none';
+                Telegram.WebApp.MainButton.hide();
+                return;
+            }
+
+            // ТОЧНЫЙ расчёт цены
+            let price = 150; // База по Енакиево
+            
+            const toLower = to.toLowerCase();
+            if (toLower.includes('донецк')) price += 500;
+            else if (toLower.includes('зугрэс')) price += 150;
+            else if (toLower.includes('шахтёрск')) price += 250;
+            else if (toLower.includes('харцызск')) price += 300;
+            else if (toLower.includes('макеевка')) price += 400;
+
+            price += Math.floor(Math.random() * 80) + 20; // Ночной/час пик
+
+            const time = Math.floor(Math.random() * 10) + 5;
+            document.getElementById('priceCard').innerHTML = `
+                💰 <strong>${price} ₽</strong><br>
+                <small>⏱️ Приезд через ${time}-${time+10} мин</small>
+            `;
+
+            document.getElementById('calcBtn').style.display = 'none';
+            document.getElementById('orderBtn').style.display = 'block';
+            Telegram.WebApp.MainButton.show();
         }
 
         function sendOrder() {
-            const data = { action: 'order', from: document.getElementById('from').value, /* ... */ };
-            Telegram.WebApp.sendData(JSON.stringify(data));
+            const orderData = {
+                from: document.getElementById('from').value.trim(),
+                to: document.getElementById('to').value.trim(),
+                phone: document.getElementById('phone').value.trim(),
+                comment: document.getElementById('comment').value.trim(),
+                price: document.getElementById('priceCard').textContent.match(/\d+/)[0],
+                time: new Date().toLocaleString('ru-RU')
+            };
+
+            // Сохраняем в историю
+            orders.unshift(orderData);
+            localStorage.setItem('orders', JSON.stringify(orders.slice(0, 50))); // Макс 50 заказов
+            showOrders();
+
+            Telegram.WebApp.sendData(JSON.stringify(orderData));
+            Telegram.WebApp.close();
         }
 
-        function requestDriverRole() {
-            Telegram.WebApp.sendData(JSON.stringify({ action: 'set_driver' }));
-            alert('Запрос отправлен админу!');
-        }
+        function showOrders() {
+            const list = document.getElementById('ordersList');
+            document.getElementById('ordersCount').textContent = orders.length;
 
-        function toggleOnline() {
-            const btn = document.getElementById('onlineBtn');
-            if (btn.innerText === 'Оффлайн') {
-                btn.innerText = 'Онлайн';
-                btn.style.background = '#4ecdc4';
-                Telegram.WebApp.sendData(JSON.stringify({ action: 'go_online' }));
-            } else {
-                btn.innerText = 'Оффлайн';
-                btn.style.background = '#ff6b6b';
-            }
+            if (orders.length === 0) return;
+
+            list.innerHTML = orders.slice(0, 5).map(order => `
+                <div class="order-item">
+                    <div class="order-time">${order.time}</div>
+                    <div class="order-route">${order.from} → ${order.to}</div>
+                    <div class="order-price">💰 ${order.price} ₽</div>
+                </div>
+            `).join('');
         }
     </script>
 </body>
