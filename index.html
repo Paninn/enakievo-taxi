@@ -154,22 +154,6 @@
             font-size: 18px;
             cursor: pointer;
         }
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-            gap: 32px;
-            margin: 40px 0;
-        }
-        .stat-card {
-            text-align: center;
-            padding: 32px;
-            background: rgba(255,255,255,0.05);
-            border-radius: var(--radius);
-        }
-        .stat-number {
-            font-size: 48px;
-            font-weight: 800;
-        }
         #passengerPanel, #driverPanel, #adminPanel { display: none; }
     </style>
 </head>
@@ -216,13 +200,33 @@
 
             <div class="card">
                 <h3 style="text-align:center;margin-bottom:32px;font-size:28px;">Мои заказы</h3>
-                <div id="passengerOrdersList"></div>
+                <div id="passengerOrdersList">
+                    <p style="text-align:center;opacity:0.6;">Нет заказов</p>
+                </div>
             </div>
         </div>
 
-        <!-- Панели водителя и админа (скрыты до назначения роли) -->
-        <div id="driverPanel"></div>
-        <div id="adminPanel"></div>
+        <!-- Панель водителя (скрыта по умолчанию) -->
+        <div id="driverPanel">
+            <div class="card">
+                <h2 style="text-align:center;font-size:36px;">Панель водителя</h2>
+                <p style="text-align:center;font-size:40px;margin:48px 0;" id="driverStatus">Оффлайн</p>
+                <button class="btn btn-green" id="lineBtn" onclick="toggleOnline()">Выйти на линию</button>
+            </div>
+        </div>
+
+        <!-- Панель админа (скрыта по умолчанию) -->
+        <div id="adminPanel">
+            <div class="card">
+                <h2 style="text-align:center;font-size:36px;">👑 Админ-панель</h2>
+                <input type="number" id="roleUserId" placeholder="ID пользователя">
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-top:32px;">
+                    <button class="btn btn-green" onclick="setRole('driver')">Назначить водителем</button>
+                    <button class="btn btn-purple" onclick="setRole('admin')">Назначить админом</button>
+                </div>
+                <button class="btn btn-red" style="margin-top:24px;" onclick="setRole('passenger')">Убрать роль</button>
+            </div>
+        </div>
     </div>
 
     <script>
@@ -230,16 +234,16 @@
         Telegram.WebApp.expand();
         Telegram.WebApp.MainButton.setText("Заказать").hide().onClick(sendOrder);
 
-        const user = Telegram.WebApp.initDataUnsafe.user;
+        const user = Telegram.WebApp.initDataUnsafe.user || { id: 999, first_name: 'Тест' };
         const userId = user.id;
         const fullName = user.first_name + (user.last_name ? ' ' + user.last_name : '');
 
         document.getElementById('modalName').textContent = fullName;
         document.getElementById('modalId').textContent = userId;
 
+        // Роли из localStorage (админ назначает)
         let roles = JSON.parse(localStorage.getItem('taxi_roles') || '{}');
         let orders = JSON.parse(localStorage.getItem('taxi_orders') || '[]');
-        let allOrders = JSON.parse(localStorage.getItem('taxi_all_orders') || '[]');
 
         let currentRole = roles[userId] || 'passenger';
 
@@ -247,7 +251,7 @@
         document.getElementById('modalRole').textContent = currentRole === 'admin' ? '👑 Администратор' : currentRole === 'driver' ? 'Водитель 🚗' : 'Пассажир';
         if (currentRole === 'admin') document.getElementById('adminTools').style.display = 'block';
 
-        // Карта (2GIS для ДНР)
+        // Карта (2GIS — русские названия, отлично для ДНР)
         let map, fromMarker, toMarker, fromCoords, toCoords;
         let isFrom = true;
 
@@ -288,6 +292,35 @@
             };
         }
 
+        // Админ — назначение роли
+        window.setRole = function(newRole) {
+            const targetId = document.getElementById('roleUserId').value.trim();
+            if (!targetId) return alert('Введите ID пользователя');
+            roles[targetId] = newRole;
+            localStorage.setItem('taxi_roles', JSON.stringify(roles));
+            Telegram.WebApp.sendData(JSON.stringify({ action: 'set_role', targetId, newRole }));
+            alert(`Роль "${newRole}" назначена пользователю ${targetId}`);
+        };
+
+        // Водитель — выход на линию
+        window.toggleOnline = function() {
+            const btn = document.getElementById('lineBtn');
+            const status = document.getElementById('driverStatus');
+            if (btn.textContent === 'Выйти на линию') {
+                btn.textContent = 'Уйти с линии';
+                btn.className = 'btn btn-red';
+                status.textContent = 'Онлайн';
+                status.style.color = '#4ade80';
+                Telegram.WebApp.sendData(JSON.stringify({ action: 'driver_online', userId }));
+            } else {
+                btn.textContent = 'Выйти на линию';
+                btn.className = 'btn btn-green';
+                status.textContent = 'Оффлайн';
+                status.style.color = '#f87171';
+                Telegram.WebApp.sendData(JSON.stringify({ action: 'driver_offline', userId }));
+            }
+        };
+
         // Расчёт цены
         window.calculatePrice = function() {
             let distance = 10;
@@ -310,34 +343,22 @@
                 action: 'new_order',
                 userId: userId,
                 fullName: fullName,
-                from: document.getElementById('from').value,
-                to: document.getElementById('to').value,
+                from: document.getElementById('from').value || 'По карте',
+                to: document.getElementById('to').value || 'По карте',
                 phone: document.getElementById('phone').value,
                 comment: document.getElementById('comment').value,
                 price: price,
                 time: new Date().toLocaleString('ru-RU')
             };
             orders.unshift(order);
-            allOrders.unshift(order);
             localStorage.setItem('taxi_orders', JSON.stringify(orders.slice(0,50)));
-            localStorage.setItem('taxi_all_orders', JSON.stringify(allOrders));
-            showPassengerOrders();
+            showOrders();
             Telegram.WebApp.sendData(JSON.stringify(order));
             Telegram.WebApp.close();
         };
 
-        // Отмена заказа
-        window.cancelOrder = function(index) {
-            if (confirm('Отменить заказ?')) {
-                const canceled = orders.splice(index, 1)[0];
-                localStorage.setItem('taxi_orders', JSON.stringify(orders));
-                showPassengerOrders();
-                Telegram.WebApp.sendData(JSON.stringify({ action: 'cancel_order', order: canceled }));
-            }
-        };
-
-        // Показ заказов пассажира
-        function showPassengerOrders() {
+        // Показ заказов
+        function showOrders() {
             const list = document.getElementById('passengerOrdersList');
             if (orders.length === 0) {
                 list.innerHTML = '<p style="text-align:center;opacity:0.6;">Нет заказов</p>';
@@ -348,7 +369,6 @@
                     <div style="font-size:16px;opacity:0.8;">${o.time}</div>
                     <div style="font-size:22px;font-weight:600;margin:12px 0;">${o.from} → ${o.to}</div>
                     <div style="font-size:26px;color:var(--accent);">💰 ${o.price} ₽</div>
-                    <button class="action-btn" onclick="cancelOrder(${i})">Отменить</button>
                 </div>
             `).join('');
         }
@@ -361,7 +381,7 @@
             document.getElementById('profileModal').style.display = 'none';
         };
 
-        if (currentRole === 'passenger') showPassengerOrders();
+        if (currentRole === 'passenger') showOrders();
     </script>
 </body>
 </html>
