@@ -7,6 +7,34 @@
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.css" />
+    <script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.css" />
+    <script src="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.js"></script>
+
+    <!-- Правильное подключение Firebase Realtime Database (modular SDK) -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
+        import { getDatabase, ref, onValue, set, push, update, remove, query, orderByChild, equalTo } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-database.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyBrZRRocRp1FDemAZ1hLr0l5AlQGan9r5k",
+            authDomain: "taxi-76c4e.firebaseapp.com",
+            databaseURL: "https://taxi-76c4e-default-rtdb.firebaseio.com",  // ОБЯЗАТЕЛЬНО!
+            projectId: "taxi-76c4e",
+            storageBucket: "taxi-76c4e.firebasestorage.app",
+            messagingSenderId: "785956414318",
+            appId: "1:785956414318:web:3c14473e88c62dc868d77f",
+            measurementId: "G-XX3QGHKR0S"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+
+        // Делаем db доступным для остального кода (не в модуле)
+        window.db = db;
+    </script>
+
     <style>
         :root {
             --bg: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
@@ -47,7 +75,6 @@
             overflow: hidden;
         }
 
-        /* Загрузка */
         #loader {
             position: fixed; inset: 0; background: var(--bg); z-index: 9999;
             display: flex; flex-direction: column; justify-content: center; align-items: center;
@@ -86,7 +113,7 @@
             background: var(--input-bg); border: 2px solid transparent;
             border-radius: 18px; font-size: 17px; color: var(--text);
         }
-        input:focus { border-color: var(--accent); }
+        input:focus { border-color: var(--accent); outline: none; }
 
         .btn {
             width: 100%; padding: 16px; margin: 14px 0;
@@ -168,14 +195,14 @@
             </div>
 
             <div class="card">
-                <input type="text" id="from" placeholder="🚩 Откуда">
-                <input type="text" id="to" placeholder="🎯 Куда">
-                <input type="tel" id="phone" placeholder="📱 Телефон">
+                <input type="text" id="from" placeholder="🚩 Откуда (введите адрес)">
+                <input type="text" id="to" placeholder="🎯 Куда (введите адрес)">
+                <input type="tel" id="phone" placeholder="📱 Телефон (обязательно)">
                 <input type="text" id="comment" placeholder="💬 Комментарий">
 
-                <div id="priceCard" class="card">Выберите маршрут 💸</div>
+                <div id="priceCard" class="card">Укажите маршрут для расчёта 💸</div>
 
-                <button class="btn btn-accent" onclick="calculatePrice()" id="calcBtn">Рассчитать</button>
+                <button class="btn btn-accent" onclick="calculateAndShowRoute()" id="calcBtn">Рассчитать стоимость</button>
                 <button class="btn btn-green" onclick="sendOrder()" id="orderBtn" style="display:none;">Заказать 🚀</button>
             </div>
         </div>
@@ -184,7 +211,7 @@
         <div id="tab-driver" class="tab">
             <div class="card">
                 <div class="driver-status" id="driverStatus">Оффлайн</div>
-                <button class="btn" id="lineBtn" onclick="toggleOnline()">Выйти на линию</button>
+                <button class="btn btn-green" id="lineBtn" onclick="toggleOnline()">Выйти на линию</button>
             </div>
             <div class="card">
                 <h3 style="text-align:center;margin-bottom:16px;">Новые заказы 🆕</h3>
@@ -237,16 +264,19 @@
     </div>
 
     <div class="bottom-nav">
-        <div class="nav-item active" onclick="openTab('tab-order')">
+        <div class="nav-item active" data-tab="tab-order">
             <span>🚕</span> Заказ
         </div>
-        <div class="nav-item" onclick="openTab('tab-orders')">
+        <div class="nav-item" data-tab="tab-driver" style="display:none;">
+            <span>🚗</span> Водитель
+        </div>
+        <div class="nav-item" data-tab="tab-orders">
             <span>📋</span> Поездки
         </div>
-        <div class="nav-item" onclick="openTab('tab-profile')">
+        <div class="nav-item" data-tab="tab-profile">
             <span>👤</span> Профиль
         </div>
-        <div class="nav-item" onclick="openTab('tab-settings')">
+        <div class="nav-item" data-tab="tab-settings">
             <span>⚙️</span> Настройки
         </div>
     </div>
@@ -255,168 +285,256 @@
         Telegram.WebApp.ready();
         Telegram.WebApp.expand();
 
-        window.onload = () => {
-            setTimeout(() => {
-                document.getElementById('loader').classList.add('hidden');
-                document.getElementById('mainContent').classList.add('visible');
-                document.body.style.overflow = 'auto';
-            }, 2200);
-        };
-
-        const user = Telegram.WebApp.initDataUnsafe.user || { id: 123456, first_name: 'Кирилл' };
-        const userId = user.id;
+        const user = Telegram.WebApp.initDataUnsafe.user || { id: 123456, first_name: 'Тест' };
+        const userId = user.id.toString();
         const fullName = user.first_name + (user.last_name ? ' ' + user.last_name : '');
 
         document.getElementById('profileName').textContent = fullName;
         document.getElementById('profileId').textContent = userId;
 
-        let roles = JSON.parse(localStorage.getItem('taxi_roles') || '{}');
-        let currentRole = roles[userId] || 'passenger';
-        document.getElementById('profileRole').textContent = currentRole === 'admin' ? '👑 Администратор' : currentRole === 'driver' ? '🚗 Водитель' : 'Пассажир';
+        let map, fromMarker, toMarker, routingControl;
+        let fromLatLng, toLatLng;
+        let currentRole = 'passenger';
+        let isOnline = false;
 
-        if (currentRole === 'admin') document.getElementById('adminPanel').style.display = 'block';
-
-        if (currentRole === 'driver') {
-            document.querySelector('[onclick="openTab(\'tab-order\')"]').style.display = 'none';
-            openTab('tab-driver');
-        }
-
-        let onlineDrivers = JSON.parse(localStorage.getItem('online_drivers') || '[]');
-        let isOnline = onlineDrivers.includes(userId);
-
-        if (currentRole === 'driver') {
-            if (isOnline) {
-                document.getElementById('driverStatus').textContent = 'Онлайн 🚗';
-                document.getElementById('driverStatus').style.color = 'var(--green)';
-                document.getElementById('lineBtn').textContent = 'Уйти с линии';
-                document.getElementById('lineBtn').className = 'btn btn-red';
-            }
-            updateDriverOrders();
-            setInterval(updateDriverOrders, 5000);
-        }
-
-        window.toggleOnline = () => {
-            if (isOnline) {
-                onlineDrivers = onlineDrivers.filter(id => id !== userId);
-                document.getElementById('driverStatus').textContent = 'Оффлайн';
-                document.getElementById('lineBtn').textContent = 'Выйти на линию';
-                document.getElementById('lineBtn').className = 'btn btn-green';
-            } else {
-                onlineDrivers.push(userId);
-                document.getElementById('driverStatus').textContent = 'Онлайн 🚗';
-                document.getElementById('driverStatus').style.color = 'var(--green)';
-                document.getElementById('lineBtn').textContent = 'Уйти с линии';
-                document.getElementById('lineBtn').className = 'btn btn-red';
-            }
-            localStorage.setItem('online_drivers', JSON.stringify(onlineDrivers));
-            isOnline = !isOnline;
-            updateDriverOrders();
+        window.onload = () => {
+            setTimeout(() => {
+                document.getElementById('loader').classList.add('hidden');
+                document.getElementById('mainContent').classList.add('visible');
+                document.body.style.overflow = 'auto';
+                initMap();
+                loadRoleAndUI();
+            }, 2200);
         };
 
-        let newOrders = JSON.parse(localStorage.getItem('new_orders') || '[]');
+        function initMap() {
+            map = L.map('map').setView([48.0159, 37.8028], 12);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
 
-        window.calculatePrice = () => {
-            // упрощённо
-            document.getElementById('priceCard').innerHTML = '<div>💰 350 ₽</div><div style="font-size:19px;opacity:0.85;">~10 км</div>';
+            const geocoder = L.Control.Geocoder.nominatim();
+
+            document.getElementById('from').addEventListener('input', debounce(() => searchAddress('from', geocoder), 600));
+            document.getElementById('to').addEventListener('input', debounce(() => searchAddress('to', geocoder), 600));
+        }
+
+        function debounce(func, delay) {
+            let timer;
+            return (...args) => {
+                clearTimeout(timer);
+                timer = setTimeout(() => func(...args), delay);
+            };
+        }
+
+        function searchAddress(field, geocoder) {
+            const value = document.getElementById(field).value.trim();
+            if (value.length < 3) return;
+
+            geocoder.geocode(value + ', Донецк, ДНР', results => {
+                if (results.length > 0) {
+                    const latlng = results[0].center;
+                    if (field === 'from') {
+                        fromLatLng = latlng;
+                        if (fromMarker) fromMarker.remove();
+                        fromMarker = L.marker(latlng).addTo(map).bindPopup('Откуда').openPopup();
+                    } else {
+                        toLatLng = latlng;
+                        if (toMarker) toMarker.remove();
+                        toMarker = L.marker(latlng).addTo(map).bindPopup('Куда').openPopup();
+                    }
+                    if (fromLatLng && toLatLng) map.fitBounds([fromLatLng, toLatLng]);
+                }
+            });
+        }
+
+        window.calculateAndShowRoute = () => {
+            if (!fromLatLng || !toLatLng) return alert('Укажите оба адреса точно');
+
+            const distanceKm = map.distance(fromLatLng, toLatLng) / 1000;
+            const price = 200 + Math.round(distanceKm * 40);
+
+            document.getElementById('priceCard').innerHTML = `
+                <div>💰 ${price} ₽</div>
+                <div style="font-size:19px;opacity:0.85;">~${distanceKm.toFixed(1)} км</div>
+            `;
+
+            if (routingControl) routingControl.remove();
+            routingControl = L.Routing.control({
+                waypoints: [fromLatLng, toLatLng],
+                createMarker: () => null,
+                lineOptions: { styles: [{ color: '#22d3ee', weight: 6 }] },
+                router: L.Routing.osrmv1({ serviceUrl: 'https://router.project-osrm.org/route/v1' })
+            }).addTo(map);
+
             document.getElementById('orderBtn').style.display = 'block';
             document.getElementById('calcBtn').style.display = 'none';
         };
 
-        window.sendOrder = () => {
+        window.sendOrder = async () => {
+            const fromAddr = document.getElementById('from').value.trim();
+            const toAddr = document.getElementById('to').value.trim();
+            const phone = document.getElementById('phone').value.trim();
+            const comment = document.getElementById('comment').value.trim();
+
+            if (!fromAddr || !toAddr || !phone || !fromLatLng || !toLatLng) {
+                return alert('Заполните все обязательные поля и рассчитайте маршрут');
+            }
+
+            const priceText = document.getElementById('priceCard').innerText.match(/\d+/g).join('');
             const order = {
-                id: Date.now(),
-                userId,
-                fullName,
-                from: document.getElementById('from').value || 'Откуда',
-                to: document.getElementById('to').value || 'Куда',
-                phone: document.getElementById('phone').value || 'Не указан',
-                comment: document.getElementById('comment').value || '—',
-                price: 350,
-                time: new Date().toLocaleString('ru-RU'),
+                passengerId: userId,
+                passengerName: fullName,
+                fromAddress: fromAddr,
+                toAddress: toAddr,
+                fromLat: fromLatLng.lat,
+                fromLng: fromLatLng.lng,
+                toLat: toLatLng.lat,
+                toLng: toLatLng.lng,
+                phone,
+                comment: comment || '—',
+                price: parseInt(priceText),
+                timestamp: Date.now(),
                 status: 'new'
             };
 
-            newOrders.push(order);
-            localStorage.setItem('new_orders', JSON.stringify(newOrders));
-
-            let orders = JSON.parse(localStorage.getItem('taxi_orders') || '[]');
-            orders.unshift(order);
-            localStorage.setItem('taxi_orders', JSON.stringify(orders));
-
-            alert('Заказ отправлен! 🚖');
+            const newRef = push(ref(db, 'orders'));
+            await set(newRef, order);
+            alert('Заказ успешно отправлен! Ожидайте водителя 🚖');
             Telegram.WebApp.close();
         };
-
-        function updateDriverOrders() {
-            if (currentRole !== 'driver' || !isOnline) return;
-            const list = document.getElementById('driverOrdersList');
-            const active = newOrders.filter(o => o.status === 'new');
-            if (active.length === 0) {
-                list.innerHTML = '<p style="text-align:center;opacity:0.6;">Нет новых заказов 😴</p>';
-                return;
-            }
-            list.innerHTML = active.map(o => `
-                <div class="order-item">
-                    <div style="font-size:14px;opacity:0.8;">${o.time}</div>
-                    <div style="font-weight:600;">${o.from} → ${o.to}</div>
-                    <div>💰 ${o.price} ₽ | 📱 ${o.phone}</div>
-                    <button class="accept-btn" onclick="acceptOrder(${o.id})">Принять</button>
-                </div>
-            `).join('');
-        }
-
-        window.acceptOrder = (orderId) => {
-            newOrders = newOrders.filter(o => o.id !== orderId);
-            localStorage.setItem('new_orders', JSON.stringify(newOrders));
-            updateDriverOrders();
-            alert('Заказ принят! Свяжитесь с пассажиром 🚗');
-        };
-
-        window.setRole = (role) => {
-            const id = document.getElementById('roleUserId').value.trim();
-            if (!id) return alert('Введите ID');
-            if (role === 'passenger') delete roles[id];
-            else roles[id] = role;
-            localStorage.setItem('taxi_roles', JSON.stringify(roles));
-            alert('Роль изменена! Перезагрузите приложение у пользователя.');
-        };
-
-        window.openTab = (tabId) => {
-            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-            document.getElementById(tabId).classList.add('active');
-            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-            event.currentTarget.classList.add('active');
-            if (tabId === 'tab-orders') showPassengerOrders();
-        };
-
-        function showPassengerOrders() {
-            const list = document.getElementById('passengerOrdersList');
-            const orders = JSON.parse(localStorage.getItem('taxi_orders') || '[]');
-            if (orders.length === 0) {
-                list.innerHTML = '<p style="text-align:center;opacity:0.6;">Заказов нет 😌</p>';
-                return;
-            }
-            list.innerHTML = orders.slice(0,15).map(o => `
-                <div class="order-item">
-                    <div style="font-size:14px;opacity:0.8;">${o.time}</div>
-                    <div style="font-weight:600;">${o.from} → ${o.to}</div>
-                    <div>💰 ${o.price} ₽</div>
-                </div>
-            `).join('');
-        }
-
-        showPassengerOrders();
-
-        // Карта
-        let map = L.map('map').setView([48.23, 38.03], 12);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 20 }).addTo(map);
 
         window.locateUser = () => {
             Telegram.WebApp.requestLocation(pos => {
                 const latlng = L.latLng(pos.latitude, pos.longitude);
                 map.setView(latlng, 17);
-            }, () => alert('Разрешите геолокацию 😊'));
+                if (fromMarker) fromMarker.remove();
+                fromMarker = L.marker(latlng).addTo(map).bindPopup('Вы здесь').openPopup();
+                fromLatLng = latlng;
+            }, () => alert('Разрешите доступ к геолокации'));
         };
+
+        function loadRoleAndUI() {
+            onValue(ref(db, `roles/${userId}`), snap => {
+                currentRole = snap.val() || 'passenger';
+                document.getElementById('profileRole').textContent = 
+                    currentRole === 'admin' ? '👑 Администратор' :
+                    currentRole === 'driver' ? '🚗 Водитель' : 'Пассажир';
+
+                document.getElementById('adminPanel').style.display = currentRole === 'admin' ? 'block' : 'none';
+                document.querySelector('[data-tab="tab-driver"]').style.display = currentRole === 'driver' ? 'flex' : 'none';
+
+                if (currentRole === 'driver') {
+                    document.querySelector('.nav-item.active').classList.remove('active');
+                    document.querySelector('[data-tab="tab-driver"]').classList.add('active');
+                    openTab('tab-driver');
+                    loadDriverStatus();
+                }
+            });
+        }
+
+        function loadDriverStatus() {
+            onValue(ref(db, `onlineDrivers/${userId}`), snap => {
+                isOnline = snap.exists();
+                document.getElementById('driverStatus').textContent = isOnline ? 'Онлайн 🚗' : 'Оффлайн';
+                document.getElementById('driverStatus').style.color = isOnline ? 'var(--green)' : '';
+                document.getElementById('lineBtn').textContent = isOnline ? 'Уйти с линии' : 'Выйти на линию';
+                document.getElementById('lineBtn').className = isOnline ? 'btn btn-red' : 'btn btn-green';
+            });
+
+            onValue(query(ref(db, 'orders'), orderByChild('status'), equalTo('new')), snap => {
+                const orders = snap.val() || {};
+                if (isOnline && Object.keys(orders).length > 0) {
+                    Telegram.WebApp.HapticFeedback.notificationOccurred('warning');
+                }
+                updateDriverOrders(orders);
+            });
+        }
+
+        window.toggleOnline = async () => {
+            if (isOnline) {
+                await remove(ref(db, `onlineDrivers/${userId}`));
+            } else {
+                Telegram.WebApp.requestLocation(async pos => {
+                    await set(ref(db, `onlineDrivers/${userId}`), {
+                        lat: pos.latitude,
+                        lng: pos.longitude,
+                        timestamp: Date.now()
+                    });
+                }, () => alert('Для выхода на линию нужна геолокация'));
+            }
+        };
+
+        function updateDriverOrders(ordersObj) {
+            const list = document.getElementById('driverOrdersList');
+            if (!ordersObj || Object.keys(ordersObj).length === 0) {
+                list.innerHTML = '<p style="text-align:center;opacity:0.6;">Нет новых заказов 😴</p>';
+                return;
+            }
+
+            list.innerHTML = Object.entries(ordersObj).map(([id, o]) => `
+                <div class="order-item">
+                    <div style="font-size:14px;opacity:0.8;">${new Date(o.timestamp).toLocaleString('ru-RU')}</div>
+                    <div style="font-weight:600;">${o.fromAddress} → ${o.toAddress}</div>
+                    <div>💰 ${o.price} ₽ | 📱 ${o.phone}</div>
+                    <button class="accept-btn" onclick="acceptOrder('${id}')">Принять</button>
+                </div>
+            `).join('');
+        }
+
+        window.acceptOrder = async (orderId) => {
+            await update(ref(db, `orders/${orderId}`), {
+                status: 'accepted',
+                driverId: userId,
+                driverName: fullName,
+                acceptedAt: Date.now()
+            });
+            alert('Заказ принят! Свяжитесь с пассажиром.');
+        };
+
+        window.setRole = async (role) => {
+            const id = document.getElementById('roleUserId').value.trim();
+            if (!id) return alert('Введите ID пользователя');
+            if (role === 'passenger') {
+                await remove(ref(db, `roles/${id}`));
+            } else {
+                await set(ref(db, `roles/${id}`), role);
+            }
+            alert('Роль успешно изменена');
+        };
+
+        document.querySelectorAll('.nav-item').forEach(item => {
+            item.addEventListener('click', () => {
+                document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+                item.classList.add('active');
+                openTab(item.dataset.tab);
+            });
+        });
+
+        function openTab(tabId) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.getElementById(tabId).classList.add('active');
+
+            if (tabId === 'tab-orders') showPassengerOrders();
+            if (tabId === 'tab-driver' && currentRole === 'driver') loadDriverStatus();
+        }
+
+        function showPassengerOrders() {
+            const list = document.getElementById('passengerOrdersList');
+            onValue(query(ref(db, 'orders'), orderByChild('passengerId'), equalTo(userId)), snap => {
+                const orders = snap.val() || {};
+                const arr = Object.values(orders).reverse();
+                if (arr.length === 0) {
+                    list.innerHTML = '<p style="text-align:center;opacity:0.6;">Заказов нет 😌</p>';
+                    return;
+                }
+                list.innerHTML = arr.slice(0, 20).map(o => `
+                    <div class="order-item">
+                        <div style="font-size:14px;opacity:0.8;">${new Date(o.timestamp).toLocaleString('ru-RU')}</div>
+                        <div style="font-weight:600;">${o.fromAddress} → ${o.toAddress}</div>
+                        <div>💰 ${o.price} ₽ • ${o.status === 'new' ? '🆕 Новый' : o.status === 'accepted' ? '✅ Принят' : '✅ Завершён'}</div>
+                    </div>
+                `).join('');
+            });
+        }
 
         const savedTheme = localStorage.getItem('taxi_theme') || 'dark';
         if (savedTheme === 'light') {
