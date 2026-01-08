@@ -7,12 +7,14 @@
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.css" />
-    <script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.css" />
     <script src="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.js"></script>
 
-    <!-- Правильное подключение Firebase Realtime Database (modular SDK) -->
+    <!-- Photon autocomplete (подсказки под полем ввода, без лишних элементов) -->
+    <script src="https://unpkg.com/leaflet.photon@0.3.1/leaflet.photon.min.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.photon@0.3.1/leaflet.photon.css" />
+
+    <!-- Firebase -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
         import { getDatabase, ref, onValue, set, push, update, remove, query, orderByChild, equalTo } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-database.js";
@@ -20,7 +22,7 @@
         const firebaseConfig = {
             apiKey: "AIzaSyBrZRRocRp1FDemAZ1hLr0l5AlQGan9r5k",
             authDomain: "taxi-76c4e.firebaseapp.com",
-            databaseURL: "https://taxi-76c4e-default-rtdb.firebaseio.com",  // ОБЯЗАТЕЛЬНО!
+            databaseURL: "https://taxi-76c4e-default-rtdb.firebaseio.com",
             projectId: "taxi-76c4e",
             storageBucket: "taxi-76c4e.firebasestorage.app",
             messagingSenderId: "785956414318",
@@ -30,8 +32,6 @@
 
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
-
-        // Делаем db доступным для остального кода (не в модуле)
         window.db = db;
     </script>
 
@@ -39,7 +39,6 @@
         :root {
             --bg: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
             --card: rgba(255, 255, 255, 0.1);
-            --card-hover: rgba(255, 255, 255, 0.18);
             --text: #f1f5f9;
             --text-secondary: rgba(255, 255, 255, 0.75);
             --accent: #22d3ee;
@@ -53,7 +52,6 @@
         body.light-theme {
             --bg: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
             --card: rgba(255, 255, 255, 0.95);
-            --card-hover: rgba(255, 255, 255, 1);
             --text: #1e293b;
             --text-secondary: rgba(30, 41, 59, 0.75);
             --accent: #0891b2;
@@ -164,6 +162,31 @@
 
         .admin-panel { background: rgba(192,132,252,0.15); border-radius: 20px; padding: 20px; margin-top: 20px; }
 
+        /* Стили для Photon — подсказки под полем, без лишних элементов */
+        .photon-input-container { position: relative; margin: 10px 0; }
+        .photon-suggestions {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: var(--card);
+            border-radius: 18px;
+            margin-top: 6px;
+            max-height: 240px;
+            overflow-y: auto;
+            box-shadow: var(--shadow);
+            z-index: 1000;
+        }
+        .photon-suggestion {
+            padding: 14px 18px;
+            color: var(--text);
+            cursor: pointer;
+        }
+        .photon-suggestion:hover {
+            background: var(--accent);
+            color: white;
+        }
+
         @media (max-width: 600px) {
             #map { height: 360px; }
             .loader-title { font-size: 36px; }
@@ -187,16 +210,18 @@
             <p class="subtitle">Быстро и комфортно по республике ✨</p>
         </div>
 
-        <!-- Заказ (пассажир) -->
         <div id="tab-order" class="tab active">
             <div class="card">
-                <button class="btn btn-accent" onclick="locateUser()">📍 Моё местоположение</button>
                 <div id="map"></div>
             </div>
 
             <div class="card">
-                <input type="text" id="from" placeholder="🚩 Откуда (введите адрес)">
-                <input type="text" id="to" placeholder="🎯 Куда (введите адрес)">
+                <div class="photon-input-container">
+                    <input type="text" id="fromAddress" placeholder="🚩 Откуда (введите адрес)">
+                </div>
+                <div class="photon-input-container">
+                    <input type="text" id="toAddress" placeholder="🎯 Куда (введите адрес)">
+                </div>
                 <input type="tel" id="phone" placeholder="📱 Телефон (обязательно)">
                 <input type="text" id="comment" placeholder="💬 Комментарий">
 
@@ -207,11 +232,10 @@
             </div>
         </div>
 
-        <!-- Водитель -->
         <div id="tab-driver" class="tab">
             <div class="card">
                 <div class="driver-status" id="driverStatus">Оффлайн</div>
-                <button class="btn btn-green" id="lineBtn" onclick="toggleOnline()">Выйти на линию</button>
+                <button class="btn" id="lineBtn" onclick="toggleOnline()">Выйти на линию</button>
             </div>
             <div class="card">
                 <h3 style="text-align:center;margin-bottom:16px;">Новые заказы 🆕</h3>
@@ -221,7 +245,6 @@
             </div>
         </div>
 
-        <!-- Поездки -->
         <div id="tab-orders" class="tab">
             <div class="card">
                 <h3 style="text-align:center;margin-bottom:18px;">Мои поездки 📋</h3>
@@ -231,7 +254,6 @@
             </div>
         </div>
 
-        <!-- Профиль -->
         <div id="tab-profile" class="tab">
             <div class="card" style="text-align:center;">
                 <div style="font-size:70px;margin:16px 0;">👤</div>
@@ -241,7 +263,6 @@
             </div>
         </div>
 
-        <!-- Настройки -->
         <div id="tab-settings" class="tab">
             <div class="card">
                 <h3 style="text-align:center;margin-bottom:20px;">Настройки ⚙️</h3>
@@ -308,46 +329,49 @@
         };
 
         function initMap() {
-            map = L.map('map').setView([48.0159, 37.8028], 12);
+            map = L.map('map').setView([48.0159, 37.8028], 11);
+
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
 
-            const geocoder = L.Control.Geocoder.nominatim();
-
-            document.getElementById('from').addEventListener('input', debounce(() => searchAddress('from', geocoder), 600));
-            document.getElementById('to').addEventListener('input', debounce(() => searchAddress('to', geocoder), 600));
-        }
-
-        function debounce(func, delay) {
-            let timer;
-            return (...args) => {
-                clearTimeout(timer);
-                timer = setTimeout(() => func(...args), delay);
-            };
-        }
-
-        function searchAddress(field, geocoder) {
-            const value = document.getElementById(field).value.trim();
-            if (value.length < 3) return;
-
-            geocoder.geocode(value + ', Донецк, ДНР', results => {
-                if (results.length > 0) {
-                    const latlng = results[0].center;
-                    if (field === 'from') {
-                        fromLatLng = latlng;
-                        if (fromMarker) fromMarker.remove();
-                        fromMarker = L.marker(latlng).addTo(map).bindPopup('Откуда').openPopup();
-                    } else {
-                        toLatLng = latlng;
-                        if (toMarker) toMarker.remove();
-                        toMarker = L.marker(latlng).addTo(map).bindPopup('Куда').openPopup();
-                    }
-                    if (fromLatLng && toLatLng) map.fitBounds([fromLatLng, toLatLng]);
+            // Автодополнение под полями (подсказки появляются прямо под вводом, без лишних элементов)
+            const fromPhoton = L.Photon.control({
+                url: 'https://photon.komoot.io/api/',
+                placeholder: '🚩 Откуда (введите адрес)',
+                resultsHandler: function(results) {
+                    return results.map(r => r.properties.name || r.properties.display_name || r.properties.street || r.properties.city);
                 }
             });
+            fromPhoton.on('selected', e => {
+                fromLatLng = e.latlng;
+                document.getElementById('fromAddress').value = e.text;
+                if (fromMarker) fromMarker.remove();
+                fromMarker = L.marker(fromLatLng).addTo(map).bindPopup('Откуда: ' + e.text).openPopup();
+                if (toLatLng) map.fitBounds([fromLatLng, toLatLng]);
+            });
+            document.querySelector('#fromAddress').parentNode.appendChild(fromPhoton.onAdd(map));
+
+            const toPhoton = L.Photon.control({
+                url: 'https://photon.komoot.io/api/',
+                placeholder: '🎯 Куда (введите адрес)',
+                resultsHandler: function(results) {
+                    return results.map(r => r.properties.name || r.properties.display_name || r.properties.street || r.properties.city);
+                }
+            });
+            toPhoton.on('selected', e => {
+                toLatLng = e.latlng;
+                document.getElementById('toAddress').value = e.text;
+                if (toMarker) toMarker.remove();
+                toMarker = L.marker(toLatLng).addTo(map).bindPopup('Куда: ' + e.text).openPopup();
+                if (fromLatLng) map.fitBounds([fromLatLng, toLatLng]);
+            });
+            document.querySelector('#toAddress').parentNode.appendChild(toPhoton.onAdd(map));
         }
 
         window.calculateAndShowRoute = () => {
-            if (!fromLatLng || !toLatLng) return alert('Укажите оба адреса точно');
+            if (!fromLatLng || !toLatLng) {
+                alert('Выберите оба адреса из подсказок');
+                return;
+            }
 
             const distanceKm = map.distance(fromLatLng, toLatLng) / 1000;
             const price = 200 + Math.round(distanceKm * 40);
@@ -370,16 +394,18 @@
         };
 
         window.sendOrder = async () => {
-            const fromAddr = document.getElementById('from').value.trim();
-            const toAddr = document.getElementById('to').value.trim();
+            const fromAddr = document.getElementById('fromAddress').value.trim();
+            const toAddr = document.getElementById('toAddress').value.trim();
             const phone = document.getElementById('phone').value.trim();
             const comment = document.getElementById('comment').value.trim();
 
             if (!fromAddr || !toAddr || !phone || !fromLatLng || !toLatLng) {
-                return alert('Заполните все обязательные поля и рассчитайте маршрут');
+                alert('Заполните все поля и выберите адреса');
+                return;
             }
 
-            const priceText = document.getElementById('priceCard').innerText.match(/\d+/g).join('');
+            const price = document.getElementById('priceCard').innerText.match(/\d+/g).join('');
+
             const order = {
                 passengerId: userId,
                 passengerName: fullName,
@@ -391,33 +417,22 @@
                 toLng: toLatLng.lng,
                 phone,
                 comment: comment || '—',
-                price: parseInt(priceText),
+                price: parseInt(price),
                 timestamp: Date.now(),
                 status: 'new'
             };
 
             const newRef = push(ref(db, 'orders'));
             await set(newRef, order);
-            alert('Заказ успешно отправлен! Ожидайте водителя 🚖');
-            Telegram.WebApp.close();
-        };
 
-        window.locateUser = () => {
-            Telegram.WebApp.requestLocation(pos => {
-                const latlng = L.latLng(pos.latitude, pos.longitude);
-                map.setView(latlng, 17);
-                if (fromMarker) fromMarker.remove();
-                fromMarker = L.marker(latlng).addTo(map).bindPopup('Вы здесь').openPopup();
-                fromLatLng = latlng;
-            }, () => alert('Разрешите доступ к геолокации'));
+            alert('Заказ отправлен! Ожидайте водителя 🚖');
+            Telegram.WebApp.close();
         };
 
         function loadRoleAndUI() {
             onValue(ref(db, `roles/${userId}`), snap => {
                 currentRole = snap.val() || 'passenger';
-                document.getElementById('profileRole').textContent = 
-                    currentRole === 'admin' ? '👑 Администратор' :
-                    currentRole === 'driver' ? '🚗 Водитель' : 'Пассажир';
+                document.getElementById('profileRole').textContent = currentRole === 'admin' ? '👑 Администратор' : currentRole === 'driver' ? '🚗 Водитель' : 'Пассажир';
 
                 document.getElementById('adminPanel').style.display = currentRole === 'admin' ? 'block' : 'none';
                 document.querySelector('[data-tab="tab-driver"]').style.display = currentRole === 'driver' ? 'flex' : 'none';
@@ -459,7 +474,7 @@
                         lng: pos.longitude,
                         timestamp: Date.now()
                     });
-                }, () => alert('Для выхода на линию нужна геолокация'));
+                }, () => alert('Разрешите геолокацию для выхода на линию'));
             }
         };
 
@@ -498,7 +513,7 @@
             } else {
                 await set(ref(db, `roles/${id}`), role);
             }
-            alert('Роль успешно изменена');
+            alert('Роль изменена');
         };
 
         document.querySelectorAll('.nav-item').forEach(item => {
@@ -530,7 +545,7 @@
                     <div class="order-item">
                         <div style="font-size:14px;opacity:0.8;">${new Date(o.timestamp).toLocaleString('ru-RU')}</div>
                         <div style="font-weight:600;">${o.fromAddress} → ${o.toAddress}</div>
-                        <div>💰 ${o.price} ₽ • ${o.status === 'new' ? '🆕 Новый' : o.status === 'accepted' ? '✅ Принят' : '✅ Завершён'}</div>
+                        <div>💰 ${o.price} ₽ • ${o.status === 'new' ? '🆕 Новый' : o.status === 'accepted' ? '✅ Принят' : 'Завершён'}</div>
                     </div>
                 `).join('');
             });
