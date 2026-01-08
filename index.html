@@ -16,6 +16,8 @@
             --text-secondary: rgba(255, 255, 255, 0.75);
             --accent: #22d3ee;
             --green: #4ade80;
+            --red: #f87171;
+            --purple: #c084fc;
             --shadow: 0 16px 32px rgba(0,0,0,0.4);
             --input-bg: rgba(255,255,255,0.08);
         }
@@ -28,6 +30,8 @@
             --text-secondary: rgba(30, 41, 59, 0.75);
             --accent: #0891b2;
             --green: #22c55e;
+            --red: #ef4444;
+            --purple: #9333ea;
             --shadow: 0 16px 32px rgba(0,0,0,0.1);
             --input-bg: rgba(0,0,0,0.05);
         }
@@ -40,7 +44,7 @@
             min-height: 100vh;
             padding-bottom: 80px;
             transition: all 0.5s ease;
-            overflow: hidden; /* пока загрузка */
+            overflow: hidden;
         }
 
         /* Экран загрузки */
@@ -51,30 +55,13 @@
         }
         #loader.hidden { opacity: 0; pointer-events: none; }
 
-        .loader-title {
-            font-size: 42px; font-weight: 800; margin-bottom: 40px; letter-spacing: -1px;
-        }
+        .loader-title { font-size: 42px; font-weight: 800; margin-bottom: 40px; }
+        .loader-track { width: 300px; height: 8px; background: rgba(255,255,255,0.2); border-radius: 4px; overflow: hidden; position: relative; }
+        .loader-bar { width: 100%; height: 100%; background: linear-gradient(90deg, var(--accent), #06b6d4); transform: translateX(-100%); animation: loadBar 2s ease-in-out forwards; }
+        .taxi { position: absolute; top: -40px; left: -60px; font-size: 50px; animation: driveTaxi 2s ease-in-out forwards; }
 
-        .loader-track {
-            width: 300px; height: 8px; background: rgba(255,255,255,0.2); border-radius: 4px; overflow: hidden;
-            position: relative;
-        }
-        .loader-bar {
-            width: 100%; height: 100%; background: linear-gradient(90deg, var(--accent), #06b6d4);
-            transform: translateX(-100%); animation: loadBar 2s ease-in-out forwards;
-        }
-
-        .taxi {
-            position: absolute; top: -40px; left: -60px; font-size: 50px;
-            animation: driveTaxi 2s ease-in-out forwards;
-        }
-
-        @keyframes loadBar {
-            to { transform: translateX(0); }
-        }
-        @keyframes driveTaxi {
-            to { left: 320px; }
-        }
+        @keyframes loadBar { to { transform: translateX(0); } }
+        @keyframes driveTaxi { to { left: 320px; } }
 
         .container { max-width: 960px; margin: 0 auto; padding: 12px; opacity: 0; transition: opacity 1s ease; }
         .container.visible { opacity: 1; }
@@ -113,22 +100,21 @@
         }
         .btn-accent { background: linear-gradient(135deg, var(--accent), #06b6d4); color: white; }
         .btn-green { background: linear-gradient(135deg, var(--green), #16a34a); color: white; }
-        .btn:hover { transform: translateY(-3px); box-shadow: 0 12px 25px rgba(0,0,0,0.4); }
+        .btn-red { background: linear-gradient(135deg, var(--red), #dc2626); color: white; }
+        .btn-purple { background: linear-gradient(135deg, var(--purple), #7c3aed); color: white; }
+        .btn:hover { transform: translateY(-3px); }
 
         #priceCard {
             text-align: center; font-size: 34px; font-weight: 800;
             padding: 32px; border-radius: 20px; background: rgba(34,211,238,0.15);
             min-height: 110px;
         }
-        body.light-theme #priceCard { background: rgba(34,211,238,0.1); }
 
         .order-item {
             background: rgba(255,255,255,0.08);
             padding: 18px; border-radius: 18px; margin: 10px 0;
             border-left: 4px solid var(--accent);
-            transition: all 0.3s;
         }
-        .order-item:hover { transform: translateX(6px); }
 
         .bottom-nav {
             position: fixed; bottom: 0; left: 0; right: 0;
@@ -148,17 +134,16 @@
         .tab { display: none; }
         .tab.active { display: block; }
 
+        .admin-panel { background: rgba(192,132,252,0.15); border-radius: 20px; padding: 20px; margin-top: 20px; }
+
         @media (max-width: 600px) {
             #map { height: 360px; }
-            h1 { font-size: 34px; }
-            .card { padding: 20px; }
             .loader-title { font-size: 36px; }
             .loader-track { width: 260px; }
         }
     </style>
 </head>
 <body>
-    <!-- Экран загрузки -->
     <div id="loader">
         <div class="loader-title">Такси ДНР 🚕</div>
         <div class="loader-track">
@@ -174,14 +159,11 @@
             <p class="subtitle">Быстро и комфортно по республике ✨</p>
         </div>
 
-        <!-- Заказ -->
+        <!-- Вкладка Заказ (пассажир) -->
         <div id="tab-order" class="tab active">
             <div class="card">
                 <button class="btn btn-accent" onclick="locateUser()">📍 Моё местоположение</button>
                 <div id="map"></div>
-                <p style="text-align:center;opacity:0.8;margin:14px 0;font-size:15px;">
-                    Кликните на карте или введите адрес ниже 👇
-                </p>
             </div>
 
             <div class="card">
@@ -197,7 +179,7 @@
             </div>
         </div>
 
-        <!-- Заказы -->
+        <!-- Вкладка Поездки -->
         <div id="tab-orders" class="tab">
             <div class="card">
                 <h3 style="text-align:center;margin-bottom:18px;font-size:24px;">Мои поездки 📋</h3>
@@ -207,18 +189,17 @@
             </div>
         </div>
 
-        <!-- Профиль -->
+        <!-- Вкладка Профиль -->
         <div id="tab-profile" class="tab">
             <div class="card" style="text-align:center;">
                 <div style="font-size:70px;margin:16px 0;">👤</div>
                 <h3 style="font-size:26px;margin:12px 0;" id="profileName"></h3>
                 <p style="opacity:0.8;font-size:16px;">ID: <span id="profileId"></span></p>
                 <p style="font-size:19px;margin:20px 0;">Роль: <strong id="profileRole">Пассажир</strong></p>
-                <p style="opacity:0.7;font-size:15px;">Добро пожаловать! 🌟</p>
             </div>
         </div>
 
-        <!-- Настройки -->
+        <!-- Вкладка Настройки -->
         <div id="tab-settings" class="tab">
             <div class="card">
                 <h3 style="text-align:center;margin-bottom:20px;font-size:24px;">Настройки ⚙️</h3>
@@ -226,6 +207,18 @@
                     <span style="font-size:17px;">Тёмная тема</span>
                     <button id="themeToggleBtn" onclick="toggleTheme()" style="background:none;border:none;font-size:28px;cursor:pointer;">🌙</button>
                 </div>
+
+                <!-- Админ-панель -->
+                <div id="adminPanel" class="admin-panel" style="display:none;">
+                    <h3 style="text-align:center;margin-bottom:16px;font-size:22px;color:var(--purple);">👑 Админ-панель</h3>
+                    <input type="number" id="roleUserId" placeholder="Telegram ID пользователя" style="margin-bottom:16px;">
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                        <button class="btn btn-green" onclick="setRole('driver')">Назначить водителем 🚗</button>
+                        <button class="btn btn-purple" onclick="setRole('admin')">Назначить админом 👑</button>
+                    </div>
+                    <button class="btn btn-red" style="margin-top:12px;" onclick="setRole('passenger')">Убрать роль</button>
+                </div>
+
                 <div style="margin-top:30px;text-align:center;opacity:0.7;font-size:14px;">
                     Такси ДНР v1.0<br>
                     Только по территории республики ❤️
@@ -234,7 +227,6 @@
         </div>
     </div>
 
-    <!-- Нижняя навигация -->
     <div class="bottom-nav">
         <div class="nav-item active" onclick="openTab('tab-order')">
             <span>🚕</span> Заказ
@@ -254,13 +246,12 @@
         Telegram.WebApp.ready();
         Telegram.WebApp.expand();
 
-        // Анимация загрузки
         window.onload = () => {
             setTimeout(() => {
                 document.getElementById('loader').classList.add('hidden');
                 document.getElementById('mainContent').classList.add('visible');
                 document.body.style.overflow = 'auto';
-            }, 2200); // немного дольше анимации
+            }, 2200);
         };
 
         const user = Telegram.WebApp.initDataUnsafe.user || { id: 123456, first_name: 'Кирилл' };
@@ -270,11 +261,29 @@
         document.getElementById('profileName').textContent = fullName;
         document.getElementById('profileId').textContent = userId;
 
+        // Роли
         let roles = JSON.parse(localStorage.getItem('taxi_roles') || '{}');
         let currentRole = roles[userId] || 'passenger';
         document.getElementById('profileRole').textContent = currentRole === 'admin' ? '👑 Администратор' : currentRole === 'driver' ? '🚗 Водитель' : 'Пассажир';
 
-        let orders = JSON.parse(localStorage.getItem('taxi_orders') || '[]');
+        // Показ админ-панели
+        if (currentRole === 'admin') {
+            document.getElementById('adminPanel').style.display = 'block';
+        }
+
+        // Назначение роли
+        window.setRole = (newRole) => {
+            const targetId = document.getElementById('roleUserId').value.trim();
+            if (!targetId) return alert('Введите ID пользователя');
+            if (newRole === 'passenger') {
+                delete roles[targetId];
+            } else {
+                roles[targetId] = newRole;
+            }
+            localStorage.setItem('taxi_roles', JSON.stringify(roles));
+            alert(`Роль "${newRole}" назначена пользователю ${targetId}\nПерезапустите приложение у пользователя, чтобы изменения применились.`);
+            document.getElementById('roleUserId').value = '';
+        };
 
         const savedTheme = localStorage.getItem('taxi_theme') || 'dark';
         if (savedTheme === 'light') {
@@ -334,14 +343,11 @@
         };
 
         window.calculatePrice = () => {
-            if (!fromCoords || !toCoords) return alert('Пожалуйста, укажите Откуда и Куда 🚗');
-            if (!serviceBounds.contains(fromCoords) || !serviceBounds.contains(toCoords)) return alert('Мы работаем только в ДНР ❤️');
+            if (!fromCoords || !toCoords) return alert('Укажите Откуда и Куда');
+            if (!serviceBounds.contains(fromCoords) || !serviceBounds.contains(toCoords)) return alert('Вне зоны ДНР');
             const distance = map.distance(fromCoords, toCoords) / 1000;
             const price = Math.round(180 + distance * 35 + (distance > 25 ? 400 : 0));
-            document.getElementById('priceCard').innerHTML = `
-                <div>💰 ${price} ₽</div>
-                <div style="font-size:19px;opacity:0.85;margin-top:10px;">~${distance.toFixed(1)} км</div>
-            `;
+            document.getElementById('priceCard').innerHTML = `<div>💰 ${price} ₽</div><div style="font-size:19px;opacity:0.85;margin-top:10px;">~${distance.toFixed(1)} км</div>`;
             document.getElementById('orderBtn').style.display = 'block';
             document.getElementById('calcBtn').style.display = 'none';
         };
@@ -350,25 +356,27 @@
             const from = document.getElementById('from').value.trim();
             const to = document.getElementById('to').value.trim();
             const phone = document.getElementById('phone').value.trim().replace(/\D/g, '');
-            if (!from || !to) return alert('Укажите откуда и куда ехать 🚕');
-            if (phone.length < 10) return alert('Введите правильный номер телефона 📞');
-            if (!fromCoords || !toCoords) return alert('Адреса должны быть выбраны на карте');
+            if (!from || !to) return alert('Укажите откуда и куда');
+            if (phone.length < 10) return alert('Введите телефон правильно');
+            if (!fromCoords || !toCoords) return alert('Адреса должны быть на карте');
 
             const price = document.getElementById('priceCard').textContent.match(/(\d+)\s*₽/)[1];
             const order = { userId, fullName, from, to, phone: document.getElementById('phone').value, comment: document.getElementById('comment').value || '—', price, time: new Date().toLocaleString('ru-RU') };
 
+            let orders = JSON.parse(localStorage.getItem('taxi_orders') || '[]');
             orders.unshift(order);
             localStorage.setItem('taxi_orders', JSON.stringify(orders.slice(0,50)));
 
             showPassengerOrders();
-            alert('Заказ успешно отправлен! Скоро с вами свяжется водитель 🚖');
+            alert('Заказ отправлен! 🚖');
             Telegram.WebApp.close();
         };
 
         function showPassengerOrders() {
+            let orders = JSON.parse(localStorage.getItem('taxi_orders') || '[]');
             const list = document.getElementById('passengerOrdersList');
             if (orders.length === 0) {
-                list.innerHTML = '<p style="text-align:center;opacity:0.6;">Заказов пока нет 😌</p>';
+                list.innerHTML = '<p style="text-align:center;opacity:0.6;">Заказов нет 😌</p>';
                 return;
             }
             list.innerHTML = orders.slice(0,15).map(o => `
