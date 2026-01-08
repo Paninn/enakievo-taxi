@@ -18,7 +18,6 @@
             --green: #4ade80;
             --red: #f87171;
             --purple: #c084fc;
-            --yellow: #fbbf24;
             --shadow: 0 24px 48px rgba(0,0,0,0.5);
             --input-bg: rgba(255,255,255,0.1);
             --border-focus: #22d3ee;
@@ -34,7 +33,6 @@
             --green: #22c55e;
             --red: #ef4444;
             --purple: #9333ea;
-            --yellow: #f59e0b;
             --shadow: 0 24px 48px rgba(0,0,0,0.12);
             --input-bg: rgba(15, 23, 42, 0.06);
             --border-focus: #0891b2;
@@ -49,17 +47,8 @@
             transition: all 0.6s ease;
         }
 
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 20px;
-            padding-top: 100px;
-        }
-
-        .header {
-            text-align: center;
-            padding: 40px 0;
-        }
+        .container { max-width: 1200px; margin: 0 auto; padding: 20px; padding-top: 100px; }
+        .header { text-align: center; padding: 40px 0; }
         h1 { font-size: 52px; font-weight: 800; letter-spacing: -2px; }
         .subtitle { font-size: 22px; opacity: 0.85; margin-top: 12px; }
 
@@ -84,19 +73,8 @@
         }
         .card:hover { transform: translateY(-6px); background: var(--card-hover); }
 
-        /* Горизонтальный layout для пассажира */
-        .main-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 32px;
-            margin-top: 20px;
-        }
-
-        #map {
-            height: 600px;
-            border-radius: 28px;
-            box-shadow: 0 16px 40px rgba(0,0,0,0.3);
-        }
+        .main-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; margin-top: 20px; }
+        #map { height: 600px; border-radius: 28px; box-shadow: 0 16px 40px rgba(0,0,0,0.3); }
 
         input {
             width: 100%; padding: 22px 20px; margin: 16px 0;
@@ -107,6 +85,16 @@
         input::placeholder { color: var(--text-secondary); }
         input:focus { outline: none; border-color: var(--border-focus); transform: scale(1.01); }
 
+        .search-results {
+            max-height: 200px; overflow-y: auto; margin-top: 8px; background: rgba(255,255,255,0.1);
+            border-radius: 16px; padding: 8px; display: none;
+        }
+        .search-result-item {
+            padding: 12px; border-radius: 12px; cursor: pointer; margin: 4px 0;
+            transition: background 0.3s;
+        }
+        .search-result-item:hover { background: rgba(255,255,255,0.2); }
+
         .btn {
             width: 100%; padding: 24px; margin: 20px 0;
             border: none; border-radius: 24px; font-size: 21px; font-weight: 700;
@@ -115,8 +103,6 @@
         }
         .btn-accent { background: linear-gradient(135deg, var(--accent), #06b6d4); color: white; }
         .btn-green { background: linear-gradient(135deg, var(--green), #16a34a); color: white; }
-        .btn-red { background: linear-gradient(135deg, var(--red), #dc2626); color: white; }
-        .btn-purple { background: linear-gradient(135deg, var(--purple), #7c3aed); color: white; }
         .btn:hover { transform: translateY(-4px); }
 
         #priceCard {
@@ -126,9 +112,7 @@
             justify-content: center; align-items: center;
         }
 
-        .orders-section {
-            margin-top: 40px;
-        }
+        .orders-section { margin-top: 40px; }
         .order-item {
             background: rgba(255,255,255,0.06);
             padding: 24px; border-radius: 24px; margin: 16px 0;
@@ -143,29 +127,10 @@
             font-size: 15px; cursor: pointer;
         }
 
-        /* Админ и водитель — тоже в гриде */
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 24px;
-            margin: 32px 0;
-        }
-        .stat-card {
-            text-align: center; padding: 32px;
-            background: rgba(255,255,255,0.06); border-radius: 24px;
-        }
-        body.light-theme .stat-card { background: rgba(15,23,42,0.05); }
-        .stat-number { font-size: 42px; font-weight: 800; }
-
-        /* Мобильная адаптация */
         @media (max-width: 900px) {
-            .main-grid {
-                grid-template-columns: 1fr;
-            }
+            .main-grid { grid-template-columns: 1fr; }
             #map { height: 400px; }
             .container { padding-top: 120px; }
-            #profileBtn { right: 80px; }
-            #themeBtn { right: 10px; }
             h1 { font-size: 42px; }
         }
     </style>
@@ -180,9 +145,6 @@
             <p style="font-size:28px;margin:20px 0;" id="modalName"></p>
             <p style="opacity:0.8;font-size:19px;">ID: <span id="modalId"></span></p>
             <p style="font-size:24px;margin:28px 0;">Роль: <strong id="modalRole">Пассажир</strong></p>
-            <div id="adminTools" style="display:none;margin-top:36px;">
-                <p style="font-size:22px;color:var(--purple);">👑 Админ-панель активна</p>
-            </div>
         </div>
     </div>
 
@@ -192,78 +154,30 @@
             <p class="subtitle">Енакиево • Горловка • Донецк • Макеевка</p>
         </div>
 
-        <!-- АДМИН ПАНЕЛЬ -->
-        <div id="adminPanel" style="display:none;">
-            <div class="card">
-                <h2 style="text-align:center;font-size:36px;margin-bottom:32px;">👑 Админ-панель</h2>
-                <div class="stats-grid">
-                    <div class="stat-card">
-                        <div class="stat-number" id="totalOrdersStat">0</div>
-                        <div>Всего заказов</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-number" id="driversCount">0</div>
-                        <div>Водителей</div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="main-grid">
-                <div class="card">
-                    <h3 style="text-align:center;margin-bottom:24px;">Назначить роль</h3>
-                    <input type="number" id="roleUserId" placeholder="ID пользователя">
-                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:20px;">
-                        <button class="btn btn-green" onclick="setRole('driver')">Водитель 🚗</button>
-                        <button class="btn btn-purple" onclick="setRole('admin')">Админ 👑</button>
-                    </div>
-                    <button class="btn btn-red" style="margin-top:16px;" onclick="setRole('passenger')">Убрать роль</button>
-                </div>
-
-                <div class="card">
-                    <h3 style="text-align:center;margin-bottom:24px;">Последние заказы</h3>
-                    <div id="adminOrdersList" style="max-height:500px;overflow-y:auto;"></div>
-                </div>
-            </div>
-        </div>
-
-        <!-- ВОДИТЕЛЬ ПАНЕЛЬ -->
-        <div id="driverPanel" style="display:none;">
-            <div class="main-grid">
-                <div class="card">
-                    <h2 style="text-align:center;font-size:34px;">Панель водителя</h2>
-                    <p style="text-align:center;font-size:38px;margin:40px 0;" id="driverStatus">Оффлайн</p>
-                    <button class="btn btn-green" id="lineBtn" onclick="toggleOnline()">Выйти на линию</button>
-                </div>
-                <div class="card">
-                    <h3 style="text-align:center;margin-bottom:24px;">Доступные заказы</h3>
-                    <div id="driverOrdersList">
-                        <p style="text-align:center;opacity:0.6;font-size:18px;">Заказы появятся, когда вы на линии</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- ПАССАЖИР ПАНЕЛЬ -->
         <div id="passengerPanel">
             <div class="main-grid">
-                <!-- Карта -->
                 <div class="card">
                     <button class="btn btn-accent" onclick="locateUser()" style="margin-bottom:20px;">📍 Моё местоположение</button>
                     <div id="map"></div>
                     <p style="text-align:center;opacity:0.8;margin-top:20px;">
-                        Кликните на карте: сначала <strong>Откуда</strong> → потом <strong>Куда</strong>
+                        Или кликните на карте: сначала <strong>Откуда</strong> → потом <strong>Куда</strong>
                     </p>
                 </div>
 
-                <!-- Форма заказа -->
                 <div>
                     <div class="card">
-                        <input type="text" id="from" placeholder="Откуда (например: Енакиево, Ленина 15)">
-                        <input type="text" id="to" placeholder="Куда (например: Донецк, Артёма 10)">
+                        <div style="position:relative;">
+                            <input type="text" id="from" placeholder="Откуда (введите адрес или кликните на карте)">
+                            <div id="fromResults" class="search-results"></div>
+                        </div>
+                        <div style="position:relative;">
+                            <input type="text" id="to" placeholder="Куда (введите адрес или кликните на карте)">
+                            <div id="toResults" class="search-results"></div>
+                        </div>
                         <input type="tel" id="phone" placeholder="Телефон: +7 (___) ___-__-__">
                         <input type="text" id="comment" placeholder="Комментарий (необязательно)">
 
-                        <div id="priceCard" class="card">Отметьте точки на карте или введите адреса</div>
+                        <div id="priceCard" class="card">Введите адреса или отметьте на карте</div>
 
                         <button class="btn btn-accent" onclick="calculatePrice()" id="calcBtn">Рассчитать цену</button>
                         <button class="btn btn-green" onclick="sendOrder()" id="orderBtn" style="display:none;">Заказать такси</button>
@@ -271,7 +185,6 @@
                 </div>
             </div>
 
-            <!-- Мои заказы (полная ширина) -->
             <div class="orders-section">
                 <div class="card">
                     <h3 style="text-align:center;margin-bottom:24px;font-size:30px;">Мои заказы</h3>
@@ -294,7 +207,6 @@
         document.getElementById('modalName').textContent = fullName;
         document.getElementById('modalId').textContent = userId;
 
-        // Тема
         const savedTheme = localStorage.getItem('taxi_theme') || 'dark';
         if (savedTheme === 'light') {
             document.body.classList.add('light-theme');
@@ -308,26 +220,28 @@
             localStorage.setItem('taxi_theme', isLight ? 'light' : 'dark');
         };
 
-        // Роли
         let roles = JSON.parse(localStorage.getItem('taxi_roles') || '{}');
         let orders = JSON.parse(localStorage.getItem('taxi_orders') || '[]');
         let allOrders = JSON.parse(localStorage.getItem('taxi_all_orders') || '[]');
 
         let currentRole = roles[userId] || 'passenger';
-
         document.getElementById(`${currentRole}Panel`).style.display = 'block';
-        document.getElementById('modalRole').textContent = 
-            currentRole === 'admin' ? '👑 Администратор' : 
-            currentRole === 'driver' ? 'Водитель 🚗' : 'Пассажир';
-        if (currentRole === 'admin') document.getElementById('adminTools').style.display = 'block';
 
-        // Карта (пассажир)
+        let map, fromMarker, toMarker, fromCoords = null, toCoords = null;
+        let isFrom = true;
+
+        const serviceBounds = L.latLngBounds(L.latLng(47.5, 36.8), L.latLng(48.8, 39.0));
+
         if (currentRole === 'passenger') {
-            const map = L.map('map').setView([48.23, 38.03], 11);
-            L.tileLayer('https://tile2.maps.2gis.com/tiles?x={x}&y={y}&z={z}&v=1', { attribution: '© 2GIS' }).addTo(map);
+            map = L.map('map').setView([48.23, 38.03], 12);
 
-            let fromMarker, toMarker, fromCoords, toCoords, isFrom = true;
+            L.tileLayer('https://tile2.maps.2gis.com/tiles?x={x}&y={y}&z={z}&v=1', {
+                attribution: '© 2GIS',
+                minZoom: 8,
+                maxZoom: 18
+            }).addTo(map);
 
+            // Клик по карте
             map.on('click', e => {
                 const latlng = e.latlng;
                 if (isFrom) {
@@ -335,30 +249,98 @@
                     if (fromMarker) fromMarker.remove();
                     fromMarker = L.marker(latlng).addTo(map).bindPopup('📤 Откуда').openPopup();
                     document.getElementById('from').value = 'Отмечено на карте';
+                    document.getElementById('fromResults').style.display = 'none';
                     isFrom = false;
                 } else {
                     toCoords = latlng;
                     if (toMarker) toMarker.remove();
                     toMarker = L.marker(latlng).addTo(map).bindPopup('📥 Куда').openPopup();
                     document.getElementById('to').value = 'Отмечено на карте';
+                    document.getElementById('toResults').style.display = 'none';
                     isFrom = true;
                 }
             });
 
             window.locateUser = () => {
                 Telegram.WebApp.requestLocation(pos => {
-                    const latlng = { lat: pos.latitude, lng: pos.longitude };
+                    const latlng = L.latLng(pos.latitude, pos.longitude);
                     map.setView(latlng, 16);
                     fromCoords = latlng;
                     if (fromMarker) fromMarker.remove();
                     fromMarker = L.marker(latlng).addTo(map).bindPopup('📍 Вы здесь').openPopup();
                     document.getElementById('from').value = 'Моё местоположение';
-                }, () => alert('Разрешите геолокацию в Telegram'));
+                }, () => alert('Разрешите геолокацию'));
             };
+
+            // Поиск адреса
+            function searchAddress(query, fieldId, resultsId, isFromPoint) {
+                if (query.length < 3) {
+                    document.getElementById(resultsId).style.display = 'none';
+                    return;
+                }
+
+                fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&countrycodes=ua,ru&limit=5&bounded=1&viewbox=36.8,47.5,39.0,48.8&accept-language=ru`)
+                    .then(res => res.json())
+                    .then(data => {
+                        const resultsDiv = document.getElementById(resultsId);
+                        resultsDiv.innerHTML = '';
+                        if (data.length === 0) {
+                            resultsDiv.innerHTML = '<div class="search-result-item">Ничего не найдено</div>';
+                        } else {
+                            data.forEach(item => {
+                                const div = document.createElement('div');
+                                div.className = 'search-result-item';
+                                div.textContent = item.display_name.split(',')[0] + ', ' + item.display_name.split(',').slice(1).join(',').trim();
+                                div.onclick = () => {
+                                    const latlng = L.latLng(item.lat, item.lon);
+                                    if (isFromPoint) {
+                                        fromCoords = latlng;
+                                        if (fromMarker) fromMarker.remove();
+                                        fromMarker = L.marker(latlng).addTo(map).bindPopup('📤 Откуда').openPopup();
+                                        document.getElementById('from').value = item.display_name.split(',')[0];
+                                    } else {
+                                        toCoords = latlng;
+                                        if (toMarker) toMarker.remove();
+                                        toMarker = L.marker(latlng).addTo(map).bindPopup('📥 Куда').openPopup();
+                                        document.getElementById('to').value = item.display_name.split(',')[0];
+                                    }
+                                    map.setView(latlng, 16);
+                                    resultsDiv.style.display = 'none';
+                                };
+                                resultsDiv.appendChild(div);
+                            });
+                        }
+                        resultsDiv.style.display = 'block';
+                    });
+            }
+
+            document.getElementById('from').addEventListener('input', e => searchAddress(e.target.value, 'from', 'fromResults', true));
+            document.getElementById('to').addEventListener('input', e => searchAddress(e.target.value, 'to', 'toResults', false));
+
+            // Скрытие результатов при клике вне
+            document.addEventListener('click', e => {
+                if (!e.target.closest('#from, #fromResults, #to, #toResults')) {
+                    document.getElementById('fromResults').style.display = 'none';
+                    document.getElementById('toResults').style.display = 'none';
+                }
+            });
+        }
+
+        function isInServiceArea(coords) {
+            return serviceBounds.contains(coords);
         }
 
         window.calculatePrice = () => {
-            if (!fromCoords || !toCoords) return alert('Сначала отметьте точки на карте');
+            if (!fromCoords || !toCoords) {
+                alert('Укажите точки "Откуда" и "Куда" (на карте или текстом)');
+                return;
+            }
+
+            if (!isInServiceArea(fromCoords) || !isInServiceArea(toCoords)) {
+                alert('Извините, одна или обе точки вне зоны обслуживания (ДНР).');
+                return;
+            }
+
             const distance = map.distance(fromCoords, toCoords) / 1000;
             const price = Math.round(180 + distance * 35 + (distance > 25 ? 400 : 0));
 
@@ -371,12 +353,12 @@
         };
 
         window.sendOrder = () => {
-            const price = document.getElementById('priceCard').textContent.match(/(\d+)/)[1];
+            const price = document.getElementById('priceCard').textContent.match(/(\d+)\s*₽/)[1];
             const order = {
                 userId, fullName,
                 from: document.getElementById('from').value,
                 to: document.getElementById('to').value,
-                phone: document.getElementById('phone').value,
+                phone: document.getElementById('phone').value || 'Не указан',
                 comment: document.getElementById('comment').value || '—',
                 price, time: new Date().toLocaleString('ru-RU')
             };
@@ -398,11 +380,11 @@
                 list.innerHTML = '<p style="text-align:center;opacity:0.6;">Заказов нет</p>';
                 return;
             }
-            list.innerHTML = orders.slice(0, 15).map((o, i) => `
+            list.innerHTML = orders.slice(0,15).map((o, i) => `
                 <div class="order-item">
                     <div style="font-size:16px;opacity:0.8;">${o.time}</div>
                     <div style="font-size:22px;font-weight:600;margin:10px 0;">${o.from} → ${o.to}</div>
-                    <div style="font-size:19px;">📱 ${o.phone || 'Не указан'}</div>
+                    <div style="font-size:19px;">📱 ${o.phone}</div>
                     <div style="font-size:26px;color:var(--accent);margin-top:8px;">💰 ${o.price} ₽</div>
                     ${i < 3 ? '<button class="action-btn" onclick="cancelOrder(' + i + ')">Отменить</button>' : ''}
                 </div>
@@ -415,45 +397,6 @@
                 localStorage.setItem('taxi_orders', JSON.stringify(orders));
                 showPassengerOrders();
             }
-        };
-
-        if (currentRole === 'admin') {
-            document.getElementById('totalOrdersStat').textContent = allOrders.length;
-            document.getElementById('driversCount').textContent = Object.values(roles).filter(r => r === 'driver').length;
-
-            document.getElementById('adminOrdersList').innerHTML = allOrders.slice(0, 30).map(o => `
-                <div class="order-item">
-                    <div style="font-size:15px;opacity:0.8;">${o.time} | ${o.fullName} (ID: ${o.userId})</div>
-                    <div style="font-size:21px;margin:8px 0;">${o.from} → ${o.to}</div>
-                    <div style="font-size:19px;">📱 ${o.phone} | 💬 ${o.comment}</div>
-                    <div style="font-size:24px;color:var(--accent);">💰 ${o.price} ₽</div>
-                </div>
-            `).join('');
-        }
-
-        window.toggleOnline = () => {
-            const btn = document.getElementById('lineBtn');
-            const status = document.getElementById('driverStatus');
-            if (btn.textContent.includes('Выйти')) {
-                btn.textContent = 'Выйти на линию';
-                btn.className = 'btn btn-green';
-                status.textContent = 'Оффлайн';
-                status.style.color = 'var(--red)';
-            } else {
-                btn.textContent = 'Уйти с линии';
-                btn.className = 'btn btn-red';
-                status.textContent = 'Онлайн 🚗';
-                status.style.color = 'var(--green)';
-            }
-        };
-
-        window.setRole = (newRole) => {
-            const targetId = document.getElementById('roleUserId').value.trim();
-            if (!targetId) return alert('Введите ID');
-            if (newRole === 'passenger') delete roles[targetId];
-            else roles[targetId] = newRole;
-            localStorage.setItem('taxi_roles', JSON.stringify(roles));
-            alert(`Роль ${newRole} назначена пользователю ${targetId}`);
         };
 
         window.openProfile = () => document.getElementById('profileModal').style.display = 'flex';
