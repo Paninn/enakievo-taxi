@@ -5,14 +5,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Такси ДНР 🚕</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
-
-    <!-- Yandex Maps API — ОБЯЗАТЕЛЬНО замени YOUR_API_KEY на свой ключ! -->
-    <script src="https://api-maps.yandex.ru/2.1/?apikey=8d8befc3-6c12-425b-9da1-dffad05219cb&lang=ru_RU" type="text/javascript"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.css" />
+    <script src="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.js"></script>
 
     <!-- Firebase -->
     <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
-        import { getDatabase, ref, onValue, set, push, update, remove, query, orderByChild, equalTo, startAt } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-database.js";
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
+        import { getDatabase, ref, onValue, set, push, update, remove, query, orderByChild, equalTo } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-database.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyBrZRRocRp1FDemAZ1hLr0l5AlQGan9r5k",
@@ -63,9 +64,9 @@
             background: var(--bg);
             color: var(--text);
             min-height: 100vh;
-            padding-bottom: 80px;
+            padding-bottom: 90px;
             transition: all 0.5s ease;
-            overflow: hidden;
+            overflow-x: hidden;
         }
 
         #loader {
@@ -73,15 +74,40 @@
             display: flex; flex-direction: column; justify-content: center; align-items: center;
             transition: opacity 0.8s ease;
         }
-        #loader.hidden { opacity: 0; pointer-events: none; }
+        #loader.hidden { opacity: 0; pointer-events: none; display: none; }
 
         .loader-title { font-size: 42px; font-weight: 800; margin-bottom: 40px; }
-        .loader-track { width: 300px; height: 8px; background: rgba(255,255,255,0.2); border-radius: 4px; overflow: hidden; position: relative; }
-        .loader-bar { width: 100%; height: 100%; background: linear-gradient(90deg, var(--accent), #06b6d4); transform: translateX(-100%); animation: loadBar 2s ease-in-out forwards; }
-        .taxi { position: absolute; top: -40px; left: -60px; font-size: 50px; animation: driveTaxi 2s ease-in-out forwards; }
+        .loader-track {
+            position: relative;
+            width: 320px;
+            height: 10px;
+            background: rgba(255,255,255,0.15);
+            border-radius: 5px;
+            overflow: hidden;
+            margin: 0 20px;
+        }
+        .loader-bar {
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(90deg, var(--accent), #06b6d4);
+            transform: scaleX(0);
+            transform-origin: left;
+            animation: growBar 3.2s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+        }
+        .taxi {
+            position: absolute;
+            top: -42px;
+            left: -60px;
+            font-size: 52px;
+            animation: driveTaxi 3.2s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+        }
 
-        @keyframes loadBar { to { transform: translateX(0); } }
-        @keyframes driveTaxi { to { left: 320px; } }
+        @keyframes growBar { to { transform: scaleX(1); } }
+        @keyframes driveTaxi {
+            0%   { left: -60px; }
+            92%  { left: calc(100% - 50px); }
+            100% { left: calc(100% - 30px); }
+        }
 
         .container { max-width: 960px; margin: 0 auto; padding: 12px; opacity: 0; transition: opacity 1s ease; }
         .container.visible { opacity: 1; }
@@ -99,505 +125,640 @@
             margin-bottom: 20px;
         }
 
-        #map { height: 460px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.3); margin-bottom: 16px; }
+        #map { height: 440px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.3); margin-bottom: 16px; cursor: pointer; }
 
-        input {
+        input, textarea {
             width: 100%; padding: 16px 18px; margin: 10px 0;
             background: var(--input-bg); border: 2px solid transparent;
             border-radius: 18px; font-size: 17px; color: var(--text);
+            resize: none;
         }
-        input:focus { border-color: var(--accent); outline: none; }
+        input:focus, textarea:focus { border-color: var(--accent); outline: none; }
 
         .btn {
-            width: 100%; padding: 16px; margin: 14px 0;
+            width: 100%; padding: 16px; margin: 12px 0;
             border: none; border-radius: 18px; font-size: 18px; font-weight: 700;
             cursor: pointer; box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+            transition: transform 0.2s;
         }
-        .btn-accent { background: linear-gradient(135deg, var(--accent), #06b6d4); color: white; }
-        .btn-green { background: linear-gradient(135deg, var(--green), #16a34a); color: white; }
-        .btn-red { background: linear-gradient(135deg, var(--red), #dc2626); color: white; }
-        .btn-purple { background: linear-gradient(135deg, var(--purple), #7c3aed); color: white; }
-        .btn:hover { transform: translateY(-3px); }
+        .btn:hover { transform: translateY(-2px); }
 
-        #priceCard {
-            text-align: center; font-size: 34px; font-weight: 800;
-            padding: 32px; border-radius: 20px; background: rgba(34,211,238,0.15);
-        }
+        .btn-accent  { background: linear-gradient(135deg, var(--accent), #06b6d4); color: white; }
+        .btn-green   { background: linear-gradient(135deg, var(--green), #16a34a); color: white; }
+        .btn-red     { background: linear-gradient(135deg, var(--red), #dc2626); color: white; }
+        .btn-purple  { background: linear-gradient(135deg, var(--purple), #7c3aed); color: white; }
 
         .order-item {
             background: rgba(255,255,255,0.08);
-            padding: 18px; border-radius: 18px; margin: 10px 0;
+            padding: 18px; border-radius: 18px; margin: 12px 0;
             border-left: 4px solid var(--accent);
             position: relative;
         }
-        .accept-btn {
+        .accept-btn, .complete-btn {
             position: absolute; top: 12px; right: 12px;
-            background: var(--green); color: white; border: none; border-radius: 12px;
-            padding: 8px 16px; font-size: 14px; cursor: pointer;
+            background: var(--green); color: white; border: none;
+            border-radius: 12px; padding: 8px 16px; font-size: 14px; cursor: pointer;
         }
-
-        .driver-status { text-align: center; font-size: 32px; margin: 20px 0; }
+        .complete-btn { background: var(--purple); }
 
         .bottom-nav {
             position: fixed; bottom: 0; left: 0; right: 0;
             background: var(--card); backdrop-filter: blur(20px);
             display: flex; justify-content: space-around; padding: 10px 0;
-            box-shadow: 0 -8px 25px rgba(0,0,0,0.2);
+            box-shadow: 0 -8px 25px rgba(0,0,0,0.25);
             z-index: 1000;
         }
         .nav-item {
             text-align: center; color: var(--text-secondary); font-size: 13px; cursor: pointer;
-            transition: all 0.3s; padding: 8px;
+            transition: all 0.25s; padding: 6px 4px;
         }
-        .nav-item.active { color: var(--accent); transform: scale(1.15); }
-        .nav-item span { font-size: 26px; display: block; margin-bottom: 4px; }
+        .nav-item.active { color: var(--accent); transform: scale(1.12); }
+        .nav-item span { font-size: 26px; display: block; margin-bottom: 3px; }
 
         .tab { display: none; }
         .tab.active { display: block; }
 
-        .admin-panel { background: rgba(192,132,252,0.15); border-radius: 20px; padding: 20px; margin-top: 20px; }
-        .earnings-item { background: rgba(255,255,255,0.1); padding: 16px; border-radius: 16px; margin: 12px 0; text-align: center; font-size: 20px; }
+        .admin-panel { background: rgba(192,132,252,0.12); border-radius: 20px; padding: 20px; margin-top: 24px; }
 
-        .map-hint {
+        .shift-stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
             text-align: center;
-            font-size: 15px;
-            opacity: 0.8;
-            margin-bottom: 12px;
+            margin: 20px 0;
         }
+        .shift-stats div { font-size: 32px; font-weight: 800; }
 
         @media (max-width: 600px) {
             #map { height: 360px; }
             .loader-title { font-size: 36px; }
-            .loader-track { width: 260px; }
+            .loader-track { width: 280px; }
         }
     </style>
 </head>
-<body>
-    <div id="loader">
-        <div class="loader-title">Такси ДНР 🚕</div>
-        <div class="loader-track">
-            <div class="loader-bar"></div>
-            <div class="taxi">🚕</div>
-        </div>
-        <p style="margin-top:40px;opacity:0.8;">Загрузка...</p>
+<body class="dark-theme">
+
+<div id="loader">
+    <div class="loader-title">Такси ДНР 🚕</div>
+    <div class="loader-track">
+        <div class="loader-bar"></div>
+        <div class="taxi">🚕</div>
+    </div>
+    <p style="margin-top:40px;opacity:0.8;">Загрузка...</p>
+</div>
+
+<div class="container" id="mainContent">
+
+    <div class="header">
+        <h1>Такси ДНР 🚕</h1>
+        <p class="subtitle">Быстро • Надёжно • По республике</p>
     </div>
 
-    <div class="container" id="mainContent">
-        <div class="header">
-            <h1>Такси ДНР 🚕</h1>
-            <p class="subtitle">Быстро и комфортно по республике ✨</p>
+    <!-- Вкладка Заказ -->
+    <div id="tab-order" class="tab active">
+        <div class="card">
+            <div id="map"></div>
+            <p style="text-align:center; margin-top:12px; opacity:0.8;">
+                Нажмите на карту → Откуда, потом → Куда
+            </p>
         </div>
 
-        <div id="tab-order" class="tab active">
-            <div class="card">
-                <div id="map"></div>
-                <div class="map-hint">👆 Кликните: сначала "Откуда", потом "Куда"</div>
+        <div class="card">
+            <input type="text" id="fromAddress" placeholder="🚩 Откуда" readonly>
+            <input type="text" id="toAddress" placeholder="🎯 Куда" readonly>
+            <input type="tel" id="phone" placeholder="📱 Ваш телефон (обязательно)">
+            <textarea id="comment" rows="2" placeholder="💬 Комментарий / пожелания"></textarea>
+
+            <div id="priceCard" class="card" style="font-size:32px; font-weight:800; text-align:center; padding:28px;">
+                Выберите точки на карте
             </div>
 
-            <div class="card">
-                <input type="text" id="fromAddress" placeholder="🚩 Откуда (клик по карте)">
-                <input type="text" id="toAddress" placeholder="🎯 Куда (клик по карте)">
-                <input type="tel" id="phone" placeholder="📱 Телефон (обязательно)">
-                <input type="text" id="comment" placeholder="💬 Комментарий">
+            <button class="btn btn-accent" onclick="calculateAndShowRoute()" id="calcBtn">Рассчитать стоимость</button>
+            <button class="btn btn-green" onclick="sendOrder()" id="orderBtn" style="display:none;">Заказать такси 🚀</button>
+        </div>
+    </div>
 
-                <div id="priceCard" class="card">Выберите точки на карте 💸</div>
-
-                <button class="btn btn-accent" onclick="calculateAndShowRoute()" id="calcBtn">Рассчитать стоимость</button>
-                <button class="btn btn-green" onclick="sendOrder()" id="orderBtn" style="display:none;">Заказать 🚀</button>
+    <!-- Вкладка Водитель -->
+    <div id="tab-driver" class="tab" style="display:none;">
+        <div class="card">
+            <div class="driver-status" id="driverStatus" style="font-size:36px; font-weight:800; text-align:center; margin:20px 0;">
+                Оффлайн
             </div>
+            <button class="btn" id="lineBtn" onclick="toggleOnline()">Выйти на линию</button>
         </div>
 
-        <div id="tab-driver" class="tab">
-            <div class="card">
-                <div class="driver-status" id="driverStatus">Оффлайн</div>
-                <button class="btn" id="lineBtn" onclick="toggleOnline()">Выйти на линию</button>
-            </div>
-            <div class="card">
-                <h3 style="text-align:center;margin-bottom:16px;">Новые заказы 🆕</h3>
-                <div id="driverOrdersList">
-                    <p style="text-align:center;opacity:0.6;">Заказы появятся, когда вы онлайн</p>
+        <div class="card" id="driverSessionCard" style="display:none;">
+            <h3 style="text-align:center; margin-bottom:20px;">Текущая смена</h3>
+            <div class="shift-stats">
+                <div>
+                    <div id="sessionEarnings">0 ₽</div>
+                    <div style="font-size:15px; opacity:0.75; margin-top:4px;">Заработок</div>
+                </div>
+                <div>
+                    <div id="sessionTrips">0</div>
+                    <div style="font-size:15px; opacity:0.75; margin-top:4px;">Поездок</div>
                 </div>
             </div>
-        </div>
-
-        <div id="tab-orders" class="tab">
-            <div class="card">
-                <h3 style="text-align:center;margin-bottom:18px;">Мои поездки 📋</h3>
-                <div id="passengerOrdersList">
-                    <p style="text-align:center;opacity:0.6;">Заказов нет 😌</p>
-                </div>
+            <div id="sessionTimeInfo" style="text-align:center; margin:12px 0; opacity:0.8;">
+                Время на линии: 00:00
             </div>
+            <button class="btn btn-purple" id="endShiftBtn" style="display:none;" onclick="endShift()">
+                Завершить смену
+            </button>
         </div>
 
-        <div id="tab-profile" class="tab">
-            <div class="card" style="text-align:center;">
-                <div style="font-size:70px;margin:16px 0;">👤</div>
-                <h3 style="font-size:26px;" id="profileName"></h3>
-                <p style="opacity:0.8;">ID: <span id="profileId"></span></p>
-                <p style="font-size:19px;">Роль: <strong id="profileRole">Пассажир</strong></p>
-            </div>
-        </div>
-
-        <div id="tab-settings" class="tab">
-            <div class="card">
-                <h3 style="text-align:center;margin-bottom:20px;">Настройки ⚙️</h3>
-                <div style="display:flex;align-items:center;justify-content:space-between;margin:18px 0;padding:12px;background:rgba(255,255,255,0.05);border-radius:16px;">
-                    <span>Тёмная тема</span>
-                    <button id="themeToggleBtn" onclick="toggleTheme()">🌙</button>
-                </div>
-
-                <div id="adminPanel" class="admin-panel" style="display:none;">
-                    <h3 style="text-align:center;color:var(--purple);margin-bottom:20px;">👑 Админ-панель</h3>
-
-                    <h4 style="margin:20px 0 10px;">Назначить роль</h4>
-                    <input type="number" id="roleUserId" placeholder="ID пользователя">
-                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:12px 0;">
-                        <button class="btn btn-green" onclick="setRole('driver')">Водитель 🚗</button>
-                        <button class="btn btn-purple" onclick="setRole('admin')">Админ 👑</button>
-                    </div>
-                    <button class="btn btn-red" onclick="setRole('passenger')">Убрать роль</button>
-
-                    <h4 style="margin:30px 0 15px;">Заработок водителей за сегодня</h4>
-                    <div id="driverEarningsList">
-                        <p style="text-align:center;opacity:0.6;">Загрузка...</p>
-                    </div>
-
-                    <h4 style="margin:30px 0 15px;">Заказы за сегодня</h4>
-                    <div id="adminOrdersList">
-                        <p style="text-align:center;opacity:0.6;">Загрузка...</p>
-                    </div>
-                </div>
+        <div class="card">
+            <h3 style="text-align:center; margin-bottom:16px;">Новые заказы</h3>
+            <div id="driverOrdersList">
+                <p style="text-align:center; opacity:0.6;">Заказы появятся когда вы онлайн</p>
             </div>
         </div>
     </div>
 
-    <div class="bottom-nav">
-        <div class="nav-item active" data-tab="tab-order"><span>🚕</span> Заказ</div>
-        <div class="nav-item" data-tab="tab-driver" style="display:none;"><span>🚗</span> Водитель</div>
-        <div class="nav-item" data-tab="tab-orders"><span>📋</span> Поездки</div>
-        <div class="nav-item" data-tab="tab-profile"><span>👤</span> Профиль</div>
-        <div class="nav-item" data-tab="tab-settings"><span>⚙️</span> Настройки</div>
+    <!-- Мои поездки -->
+    <div id="tab-orders" class="tab">
+        <div class="card">
+            <h3 style="text-align:center; margin-bottom:18px;">История поездок</h3>
+            <div id="passengerOrdersList">
+                <p style="text-align:center; opacity:0.6;">Пока нет заказов</p>
+            </div>
+        </div>
     </div>
 
-    <script>
-        Telegram.WebApp.ready();
-        Telegram.WebApp.expand();
+    <!-- Профиль -->
+    <div id="tab-profile" class="tab">
+        <div class="card" style="text-align:center;">
+            <div style="font-size:80px; margin:20px 0;">👤</div>
+            <h2 id="profileName" style="margin-bottom:8px;"></h2>
+            <p>ID: <strong id="profileId"></strong></p>
+            <p style="margin-top:12px;">Роль: <strong id="profileRole">Пассажир</strong></p>
+        </div>
+    </div>
 
-        const user = Telegram.WebApp.initDataUnsafe.user || { id: 123456, first_name: 'Тест' };
-        const userId = user.id.toString();
-        const fullName = user.first_name + (user.last_name ? ' ' + user.last_name : '');
+    <!-- Настройки + Админ-панель -->
+    <div id="tab-settings" class="tab">
+        <div class="card">
+            <h3 style="text-align:center; margin-bottom:20px;">Настройки</h3>
 
-        document.getElementById('profileName').textContent = fullName;
-        document.getElementById('profileId').textContent = userId;
+            <div style="display:flex; align-items:center; justify-content:space-between; padding:16px; background:rgba(255,255,255,0.05); border-radius:16px; margin:16px 0;">
+                <span>Тёмная тема</span>
+                <button id="themeToggleBtn" onclick="toggleTheme()">🌙</button>
+            </div>
 
-        let ymap, fromPlacemark, toPlacemark, multiRoute;
-        let fromCoords, toCoords;
-        let settingFrom = true;
-        let currentRole = 'passenger';
-        let isOnline = false;
+            <div id="adminPanel" class="admin-panel" style="display:none;">
+                <h3 style="text-align:center; color:var(--purple);">Админ-панель</h3>
 
-        ymaps.ready(() => {
-            ymap = new ymaps.Map('map', {
-                center: [48.0159, 37.8028],
-                zoom: 12,
-                controls: ['zoomControl', 'fullscreenControl']
-            });
+                <input type="number" id="roleUserId" placeholder="ID пользователя" style="margin:16px 0;">
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+                    <button class="btn btn-green"  onclick="setRole('driver')">Водитель</button>
+                    <button class="btn btn-purple" onclick="setRole('admin')">Админ</button>
+                </div>
+                <button class="btn btn-red" style="margin-top:16px;" onclick="setRole('passenger')">Убрать роль</button>
 
-            ymap.events.add('click', function (e) {
-                const coords = e.get('coords');
+                <div style="margin-top:32px;">
+                    <h4 style="text-align:center; color:var(--purple);">Активные смены</h4>
+                    <div id="activeShiftsList" style="max-height:280px; overflow-y:auto; margin-top:12px;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 
-                ymaps.geocode(coords, { results: 1 }).then(res => {
-                    const firstGeoObject = res.geoObjects.get(0);
-                    const address = firstGeoObject ? firstGeoObject.getAddressLine() : 'Адрес не найден';
+<div class="bottom-nav">
+    <div class="nav-item active" data-tab="tab-order"><span>🚕</span>Заказ</div>
+    <div class="nav-item" data-tab="tab-driver" id="navDriver" style="display:none;"><span>🚗</span>Водитель</div>
+    <div class="nav-item" data-tab="tab-orders"><span>📋</span>Поездки</div>
+    <div class="nav-item" data-tab="tab-profile"><span>👤</span>Профиль</div>
+    <div class="nav-item" data-tab="tab-settings"><span>⚙️</span>Настройки</div>
+</div>
 
-                    if (settingFrom) {
-                        fromCoords = coords;
-                        document.getElementById('fromAddress').value = address;
+<script>
+Telegram.WebApp.ready();
+Telegram.WebApp.expand();
 
-                        if (fromPlacemark) ymap.geoObjects.remove(fromPlacemark);
-                        fromPlacemark = new ymaps.Placemark(coords, {}, {
-                            iconLayout: 'default#imageWithContent',
-                            iconImageHref: '',
-                            iconImageSize: [40, 40],
-                            iconImageOffset: [-20, -40],
-                            iconContentLayout: ymaps.templateLayoutFactory.createClass('<div style="font-size:40px;">🚩</div>')
-                        });
-                        ymap.geoObjects.add(fromPlacemark);
+const user = Telegram.WebApp.initDataUnsafe.user || { id: 123456789, first_name: 'Тест', last_name: '' };
+const userId = user.id.toString();
+const fullName = user.first_name + (user.last_name ? ' ' + user.last_name : '');
 
-                        settingFrom = false;
-                        Telegram.WebApp.HapticFeedback.notificationOccurred('success');
-                    } else {
-                        toCoords = coords;
-                        document.getElementById('toAddress').value = address;
+document.getElementById('profileName').textContent = fullName;
+document.getElementById('profileId').textContent = userId;
 
-                        if (toPlacemark) ymap.geoObjects.remove(toPlacemark);
-                        toPlacemark = new ymaps.Placemark(coords, {}, {
-                            iconLayout: 'default#imageWithContent',
-                            iconImageHref: '',
-                            iconImageSize: [40, 40],
-                            iconImageOffset: [-20, -40],
-                            iconContentLayout: ymaps.templateLayoutFactory.createClass('<div style="font-size:40px;">🎯</div>')
-                        });
-                        ymap.geoObjects.add(toPlacemark);
+// Глобальные переменные
+let map, fromMarker, toMarker, routingControl;
+let fromLatLng, toLatLng;
+let currentRole = 'passenger';
+let isOnline = false;
+let settingFrom = true;
 
-                        settingFrom = true;
-                        ymap.setBounds(ymap.geoObjects.getBounds(), { checkZoomRange: true });
-                        calculateAndShowRoute();
-                    }
-                });
-            });
+let sessionStartTime = null;
+let sessionEarnings = 0;
+let sessionTrips = 0;
+let sessionListener = null;
+const COMMISSION_RATE = 0.15;
 
-            setTimeout(() => {
-                document.getElementById('loader').classList.add('hidden');
-                document.getElementById('mainContent').classList.add('visible');
-                document.body.style.overflow = 'auto';
-                loadRoleAndUI();
-            }, 2200);
-        });
+// Инициализация
+window.onload = () => {
+    setTimeout(() => {
+        const loader = document.getElementById('loader');
+        loader.style.opacity = '0';
+        
+        setTimeout(() => {
+            loader.style.display = 'none';
+            document.getElementById('mainContent').classList.add('visible');
+            document.body.style.overflow = 'auto';
+            initMap();
+            loadRoleAndUI();
+        }, 900);
+    }, 3400); // 3.4 секунды - полный цикл анимации
+};
 
-        window.calculateAndShowRoute = () => {
-            if (!fromCoords || !toCoords) return;
+function initMap() {
+    map = L.map('map').setView([48.0159, 37.8028], 12);
 
-            if (multiRoute) ymap.geoObjects.remove(multiRoute);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: ''
+    }).addTo(map);
 
-            multiRoute = new ymaps.multiRouter.MultiRoute({
-                referencePoints: [fromCoords, toCoords],
-                params: { routingMode: 'auto' }
-            }, { boundsAutoApply: true });
+    map.on('click', async e => {
+        const latlng = e.latlng;
+        try {
+            const res = await fetch(`https://photon.komoot.io/reverse?lon=${latlng.lng}&lat=${latlng.lat}`);
+            const data = await res.json();
+            const props = data.features?.[0]?.properties || {};
+            const addr = props.name || props.street || props.city || 'Адрес не найден';
 
-            ymap.geoObjects.add(multiRoute);
+            if (settingFrom) {
+                fromLatLng = latlng;
+                document.getElementById('fromAddress').value = addr;
+                fromMarker?.remove();
+                fromMarker = L.marker(latlng, {icon: L.divIcon({html:'🚩', className:'from-marker', iconSize:[36,36]})})
+                    .addTo(map).bindPopup('Откуда').openPopup();
+                settingFrom = false;
+                Telegram.WebApp.HapticFeedback.notificationOccurred('success');
+            } else {
+                toLatLng = latlng;
+                document.getElementById('toAddress').value = addr;
+                toMarker?.remove();
+                toMarker = L.marker(latlng, {icon: L.divIcon({html:'🎯', className:'to-marker', iconSize:[36,36]})})
+                    .addTo(map).bindPopup('Куда').openPopup();
+                settingFrom = true;
+                Telegram.WebApp.HapticFeedback.notificationOccurred('success');
+                map.fitBounds([fromLatLng, toLatLng], {padding:[60,60]});
+                calculateAndShowRoute();
+            }
+        } catch (err) {
+            alert('Не удалось определить адрес');
+        }
+    });
+}
 
-            multiRoute.model.events.add('requestsuccess', () => {
-                const activeRoute = multiRoute.getActiveRoute();
-                if (activeRoute) {
-                    const distance = Math.round(activeRoute.properties.get('distance').value / 1000);
-                    const price = 200 + distance * 40;
+window.calculateAndShowRoute = () => {
+    if (!fromLatLng || !toLatLng) return alert('Выберите обе точки');
 
-                    document.getElementById('priceCard').innerHTML = `
-                        <div>💰 ${price} ₽</div>
-                        <div style="font-size:19px;opacity:0.85;">~${distance} км</div>
-                    `;
+    const distance = map.distance(fromLatLng, toLatLng) / 1000;
+    const price = Math.round(180 + distance * 38);
 
-                    document.getElementById('orderBtn').style.display = 'block';
-                    document.getElementById('calcBtn').style.display = 'none';
+    document.getElementById('priceCard').innerHTML = `
+        <div style="font-size:42px;">${price} ₽</div>
+        <div style="font-size:18px; opacity:0.8; margin-top:8px;">~${distance.toFixed(1)} км</div>
+    `;
+
+    routingControl?.remove();
+    routingControl = L.Routing.control({
+        waypoints: [fromLatLng, toLatLng],
+        createMarker: () => null,
+        lineOptions: { styles: [{color: '#22d3ee', weight: 7, opacity: 0.85}] },
+        router: L.Routing.osrmv1({serviceUrl: 'https://router.project-osrm.org/route/v1'})
+    }).addTo(map);
+
+    document.getElementById('orderBtn').style.display = 'block';
+    document.getElementById('calcBtn').style.display = 'none';
+};
+
+window.sendOrder = async () => {
+    const from = document.getElementById('fromAddress').value.trim();
+    const to   = document.getElementById('toAddress').value.trim();
+    const phone = document.getElementById('phone').value.trim();
+    const comment = document.getElementById('comment').value.trim();
+
+    if (!from || !to || !phone || !fromLatLng || !toLatLng) {
+        return alert('Заполните все обязательные поля и выберите точки');
+    }
+
+    const priceText = document.getElementById('priceCard').innerText.match(/\d+/g)?.join('') || '0';
+    const price = parseInt(priceText);
+
+    const order = {
+        passengerId: userId,
+        passengerName: fullName,
+        fromAddress: from,
+        toAddress: to,
+        fromLat: fromLatLng.lat,
+        fromLng: fromLatLng.lng,
+        toLat: toLatLng.lat,
+        toLng: toLatLng.lng,
+        phone,
+        comment: comment || '—',
+        price,
+        timestamp: Date.now(),
+        status: 'new'
+    };
+
+    const newRef = push(ref(db, 'orders'));
+    await set(newRef, order);
+
+    Telegram.WebApp.HapticFeedback.notificationOccurred('success');
+    alert('Заказ отправлен! Ожидайте водителя...');
+};
+
+// ── Функции водителя ────────────────────────────────────────────────
+function updateSessionUI() {
+    const card = document.getElementById('driverSessionCard');
+    if (!card) return;
+
+    card.style.display = (currentRole === 'driver' && isOnline) ? 'block' : 'none';
+
+    document.getElementById('sessionEarnings').textContent = sessionEarnings.toLocaleString('ru-RU') + ' ₽';
+    document.getElementById('sessionTrips').textContent = sessionTrips;
+
+    if (sessionStartTime) {
+        const diff = Date.now() - sessionStartTime;
+        const h = Math.floor(diff / 3600000);
+        const m = Math.floor((diff % 3600000) / 60000);
+        document.getElementById('sessionTimeInfo').textContent =
+            `Время на линии: ${h.toString().padStart(2,'0')}:${m.toString().padStart(2,'0')}`;
+    }
+
+    document.getElementById('endShiftBtn').style.display = isOnline ? 'block' : 'none';
+}
+
+function startSessionListener() {
+    if (sessionListener) sessionListener();
+
+    sessionListener = onValue(
+        query(ref(db, 'orders'), orderByChild('driverId'), equalTo(userId)),
+        snap => {
+            let earned = 0, trips = 0;
+            snap.forEach(c => {
+                const o = c.val();
+                if (o.status === 'completed' && o.acceptedAt >= sessionStartTime) {
+                    const driverMoney = Math.round(o.price * (1 - COMMISSION_RATE));
+                    earned += driverMoney;
+                    trips++;
                 }
             });
+            sessionEarnings = earned;
+            sessionTrips = trips;
+            updateSessionUI();
+        }
+    );
+}
+
+async function endCurrentSession(saveHistory = true) {
+    if (!sessionStartTime) return;
+
+    const endTime = Date.now();
+
+    if (saveHistory) {
+        const shift = {
+            driverId: userId,
+            driverName: fullName,
+            start: sessionStartTime,
+            end: endTime,
+            earnings: sessionEarnings,
+            trips: sessionTrips,
+            durationMin: Math.round((endTime - sessionStartTime)/60000),
+            commission: Math.round(sessionEarnings / (1 - COMMISSION_RATE) * COMMISSION_RATE)
         };
 
-        window.sendOrder = async () => {
-            const fromAddr = document.getElementById('fromAddress').value.trim();
-            const toAddr = document.getElementById('toAddress').value.trim();
-            const phone = document.getElementById('phone').value.trim();
-            const comment = document.getElementById('comment').value.trim();
+        await push(ref(db, `drivers/${userId}/shifts`), shift);
+    }
 
-            if (!fromAddr || !toAddr || !phone || !fromCoords || !toCoords) {
-                alert('Выберите точки и заполните телефон');
-                return;
-            }
+    sessionStartTime = null;
+    sessionEarnings = 0;
+    sessionTrips = 0;
+    if (sessionListener) sessionListener();
+    updateSessionUI();
 
-            const priceText = document.getElementById('priceCard').innerText;
-            const price = parseInt(priceText.match(/\d+/g).join(''));
+    alert(`Смена завершена!\nЗаработок: ${sessionEarnings.toLocaleString('ru-RU')} ₽\nПоездок: ${sessionTrips}`);
+}
 
-            const order = {
-                passengerId: userId,
-                passengerName: fullName,
-                fromAddress: fromAddr,
-                toAddress: toAddr,
-                fromLat: fromCoords[0],
-                fromLng: fromCoords[1],
-                toLat: toCoords[0],
-                toLng: toCoords[1],
-                phone,
-                comment: comment || '—',
-                price: price,
+window.toggleOnline = async () => {
+    if (isOnline) {
+        if (confirm('Уйти с линии и завершить смену?')) {
+            await endCurrentSession();
+            await remove(ref(db, `onlineDrivers/${userId}`));
+        }
+    } else {
+        Telegram.WebApp.requestLocation(async pos => {
+            sessionStartTime = Date.now();
+            sessionEarnings = 0;
+            sessionTrips = 0;
+
+            await set(ref(db, `onlineDrivers/${userId}`), {
+                lat: pos.latitude,
+                lng: pos.longitude,
                 timestamp: Date.now(),
-                status: 'new'
-            };
-
-            const newRef = push(ref(db, 'orders'));
-            await set(newRef, order);
-
-            alert('Заказ отправлен! Ожидайте водителя 🚖');
-            Telegram.WebApp.close();
-        };
-
-        function loadRoleAndUI() {
-            onValue(ref(db, `roles/${userId}`), snap => {
-                currentRole = snap.val() || 'passenger';
-                document.getElementById('profileRole').textContent = currentRole === 'admin' ? '👑 Администратор' : currentRole === 'driver' ? '🚗 Водитель' : 'Пассажир';
-
-                document.getElementById('adminPanel').style.display = currentRole === 'admin' ? 'block' : 'none';
-                document.querySelector('[data-tab="tab-driver"]').style.display = currentRole === 'driver' ? 'flex' : 'none';
-
-                if (currentRole === 'admin') loadAdminPanel();
-                if (currentRole === 'driver') loadDriverStatus();
+                sessionStart: sessionStartTime,
+                driverName: fullName
             });
+
+            startSessionListener();
+            updateSessionUI();
+            Telegram.WebApp.HapticFeedback.notificationOccurred('success');
+        }, () => alert('Необходимо разрешить доступ к геолокации'));
+    }
+};
+
+window.endShift = () => {
+    if (confirm('Завершить смену сейчас?')) {
+        endCurrentSession();
+    }
+};
+
+window.acceptOrder = async orderId => {
+    await update(ref(db, `orders/${orderId}`), {
+        status: 'accepted',
+        driverId: userId,
+        driverName: fullName,
+        acceptedAt: Date.now()
+    });
+    Telegram.WebApp.HapticFeedback.notificationOccurred('success');
+    alert('Заказ принят!');
+};
+
+window.completeTrip = async orderId => {
+    await update(ref(db, `orders/${orderId}`), {
+        status: 'completed',
+        completedAt: Date.now()
+    });
+    Telegram.WebApp.HapticFeedback.notificationOccurred('success');
+    alert('Поездка завершена');
+};
+
+function updateDriverOrders(orders = {}) {
+    const container = document.getElementById('driverOrdersList');
+    if (Object.keys(orders).length === 0) {
+        container.innerHTML = '<p style="text-align:center;opacity:0.7;">Нет новых заказов</p>';
+        return;
+    }
+
+    container.innerHTML = Object.entries(orders).map(([id, o]) => `
+        <div class="order-item">
+            <div style="font-size:13px;opacity:0.7;margin-bottom:6px;">
+                ${new Date(o.timestamp).toLocaleString('ru-RU', {dateStyle:'short', timeStyle:'short'})}
+            </div>
+            <div style="font-weight:600;font-size:17px;">
+                ${o.fromAddress} → ${o.toAddress}
+            </div>
+            <div style="margin-top:8px;">
+                💰 ${o.price} ₽ • 📱 ${o.phone}
+            </div>
+            ${o.status === 'new' ? `<button class="accept-btn" onclick="acceptOrder('${id}')">Принять</button>` : ''}
+            ${o.status === 'accepted' ? `<button class="complete-btn" onclick="completeTrip('${id}')">Завершить</button>` : ''}
+        </div>
+    `).join('');
+}
+
+// ── Роли и статус ───────────────────────────────────────────────────
+function loadRoleAndUI() {
+    onValue(ref(db, `roles/${userId}`), snap => {
+        currentRole = snap.val() || 'passenger';
+        document.getElementById('profileRole').textContent =
+            currentRole === 'admin' ? 'Администратор 👑' :
+            currentRole === 'driver' ? 'Водитель 🚗' : 'Пассажир';
+
+        document.getElementById('adminPanel').style.display = currentRole === 'admin' ? 'block' : 'none';
+        document.getElementById('navDriver').style.display = currentRole === 'driver' ? 'block' : 'none';
+
+        if (currentRole === 'driver') {
+            document.querySelectorAll('.nav-item').forEach(i=>i.classList.remove('active'));
+            document.querySelector('[data-tab="tab-driver"]').classList.add('active');
+            document.getElementById('tab-driver').classList.add('active');
+            document.getElementById('tab-order').classList.remove('active');
+            loadDriverStatus();
+        }
+    });
+}
+
+function loadDriverStatus() {
+    onValue(ref(db, `onlineDrivers/${userId}`), snap => {
+        isOnline = snap.exists();
+        const data = snap.val();
+
+        document.getElementById('driverStatus').textContent = isOnline ? 'Онлайн 🚗' : 'Оффлайн';
+        document.getElementById('driverStatus').style.color = isOnline ? 'var(--green)' : '';
+        document.getElementById('lineBtn').textContent = isOnline ? 'Уйти с линии' : 'Выйти на линию';
+        document.getElementById('lineBtn').className = isOnline ? 'btn btn-red' : 'btn btn-green';
+
+        if (isOnline && data?.sessionStart) {
+            sessionStartTime = data.sessionStart;
+            startSessionListener();
+        }
+        updateSessionUI();
+    });
+
+    onValue(query(ref(db, 'orders'), orderByChild('status'), equalTo('new')), snap => {
+        if (isOnline && snap.exists()) {
+            Telegram.WebApp.HapticFeedback.notificationOccurred('warning');
+        }
+        updateDriverOrders(snap.val() || {});
+    });
+}
+
+function showPassengerOrders() {
+    onValue(query(ref(db, 'orders'), orderByChild('passengerId'), equalTo(userId)), snap => {
+        const orders = snap.val() || {};
+        const list = document.getElementById('passengerOrdersList');
+        const arr = Object.entries(orders).reverse();
+
+        if (arr.length === 0) {
+            list.innerHTML = '<p style="text-align:center;opacity:0.7;">У вас пока нет поездок</p>';
+            return;
         }
 
-        function loadDriverStatus() {
-            onValue(ref(db, `onlineDrivers/${userId}`), snap => {
-                isOnline = snap.exists();
-                document.getElementById('driverStatus').textContent = isOnline ? 'Онлайн 🚗' : 'Оффлайн';
-                document.getElementById('driverStatus').style.color = isOnline ? 'var(--green)' : '';
-                document.getElementById('lineBtn').textContent = isOnline ? 'Уйти с линии' : 'Выйти на линию';
-                document.getElementById('lineBtn').className = isOnline ? 'btn btn-red' : 'btn btn-green';
-            });
-
-            onValue(query(ref(db, 'orders'), orderByChild('status'), equalTo('new')), snap => {
-                const orders = snap.val() || {};
-                if (isOnline && Object.keys(orders).length > 0) {
-                    Telegram.WebApp.HapticFeedback.notificationOccurred('warning');
-                }
-                updateDriverOrders(orders);
-            });
-        }
-
-        window.toggleOnline = async () => {
-            if (isOnline) {
-                await remove(ref(db, `onlineDrivers/${userId}`));
-            } else {
-                Telegram.WebApp.requestLocation(async pos => {
-                    await set(ref(db, `onlineDrivers/${userId}`), {
-                        lat: pos.latitude,
-                        lng: pos.longitude,
-                        timestamp: Date.now()
-                    });
-                }, () => alert('Разрешите геолокацию для выхода на линию'));
-            }
-        };
-
-        function updateDriverOrders(ordersObj) {
-            const list = document.getElementById('driverOrdersList');
-            if (!ordersObj || Object.keys(ordersObj).length === 0) {
-                list.innerHTML = '<p style="text-align:center;opacity:0.6;">Нет новых заказов 😴</p>';
-                return;
-            }
-
-            list.innerHTML = Object.entries(ordersObj).map(([id, o]) => `
-                <div class="order-item">
-                    <div style="font-size:14px;opacity:0.8;">${new Date(o.timestamp).toLocaleString('ru-RU')}</div>
-                    <div style="font-weight:600;">${o.fromAddress} → ${o.toAddress}</div>
-                    <div>💰 ${o.price} ₽ | 📱 ${o.phone}</div>
-                    <button class="accept-btn" onclick="acceptOrder('${id}')">Принять</button>
+        list.innerHTML = arr.slice(0,25).map(([id,o]) => `
+            <div class="order-item">
+                <div style="font-size:13px;opacity:0.7;">
+                    ${new Date(o.timestamp).toLocaleString('ru-RU')}
                 </div>
-            `).join('');
-        }
+                <div style="font-weight:600;margin:6px 0;">
+                    ${o.fromAddress} → ${o.toAddress}
+                </div>
+                <div>
+                    💰 ${o.price} ₽ • ${o.status === 'new' ? '🆕 Новый' :
+                        o.status === 'accepted' ? '🚗 Принят' : '✅ Завершён'}
+                </div>
+            </div>
+        `).join('');
+    });
+}
 
-        window.acceptOrder = async (orderId) => {
-            await update(ref(db, `orders/${orderId}`), {
-                status: 'accepted',
-                driverId: userId,
-                driverName: fullName,
-                acceptedAt: Date.now()
-            });
-            alert('Заказ принят! Свяжитесь с пассажиром.');
-        };
+function loadActiveShiftsForAdmin() {
+    if (currentRole !== 'admin') return;
 
-        window.setRole = async (role) => {
-            const id = document.getElementById('roleUserId').value.trim();
-            if (!id) return alert('Введите ID пользователя');
-            if (role === 'passenger') {
-                await remove(ref(db, `roles/${id}`));
-            } else {
-                await set(ref(db, `roles/${id}`), role);
+    onValue(ref(db, 'onlineDrivers'), snap => {
+        const drivers = snap.val() || {};
+        const container = document.getElementById('activeShiftsList');
+
+        let html = '';
+        Object.entries(drivers).forEach(([id, d]) => {
+            if (d.sessionStart) {
+                const min = Math.round((Date.now() - d.sessionStart)/60000);
+                html += `
+                    <div class="order-item">
+                        <strong>${d.driverName || 'Водитель'}</strong><br>
+                        На линии: ${min} мин<br>
+                        <small>${new Date(d.sessionStart).toLocaleTimeString('ru-RU')}</small>
+                    </div>`;
             }
-            alert('Роль изменена');
-        };
-
-        function loadAdminPanel() {
-            const today = new Date();
-            today.setHours(0,0,0,0);
-            const todayTimestamp = today.getTime();
-
-            onValue(query(ref(db, 'orders'), orderByChild('timestamp'), startAt(todayTimestamp)), snap => {
-                const orders = snap.val() || {};
-                const arr = Object.entries(orders).reverse();
-
-                const adminList = document.getElementById('adminOrdersList');
-                if (arr.length === 0) {
-                    adminList.innerHTML = '<p style="text-align:center;opacity:0.6;">Заказов сегодня нет</p>';
-                } else {
-                    adminList.innerHTML = arr.map(([id, o]) => `
-                        <div class="order-item">
-                            <div style="font-size:14px;opacity:0.8;">${new Date(o.timestamp).toLocaleString('ru-RU')}</div>
-                            <div><strong>${o.fromAddress} → ${o.toAddress}</strong></div>
-                            <div>Пассажир: ${o.passengerName} | Водитель: ${o.driverName || '—'}</div>
-                            <div>💰 ${o.price} ₽ | Статус: ${o.status === 'new' ? '🆕 Новый' : '✅ Принят'}</div>
-                        </div>
-                    `).join('');
-                }
-
-                // Заработок водителей (только принятые заказы)
-                const earnings = {};
-                const names = {};
-                arr.forEach(([id, o]) => {
-                    if (o.status === 'accepted' && o.driverId) {
-                        earnings[o.driverId] = (earnings[o.driverId] || 0) + o.price;
-                        names[o.driverId] = o.driverName || 'ID ' + o.driverId;
-                    }
-                });
-
-                const earningsList = document.getElementById('driverEarningsList');
-                if (Object.keys(earnings).length === 0) {
-                    earningsList.innerHTML = '<p style="text-align:center;opacity:0.6;">Заработка сегодня нет</p>';
-                } else {
-                    earningsList.innerHTML = Object.keys(earnings).map(driverId => `
-                        <div class="earnings-item">
-                            <div>${names[driverId]}</div>
-                            <div style="font-weight:800;color:var(--green);margin-top:8px;">${earnings[driverId]} ₽</div>
-                        </div>
-                    `).join('');
-                }
-            });
-        }
-
-        document.querySelectorAll('.nav-item').forEach(item => {
-            item.addEventListener('click', () => {
-                document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
-                item.classList.add('active');
-                openTab(item.dataset.tab);
-            });
         });
 
-        function openTab(tabId) {
-            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-            document.getElementById(tabId).classList.add('active');
+        container.innerHTML = html || '<p style="text-align:center;opacity:0.7;">Активных смен нет</p>';
+    });
+}
 
-            if (tabId === 'tab-orders') showPassengerOrders();
-            if (tabId === 'tab-driver' && currentRole === 'driver') loadDriverStatus();
-        }
+// Навигация
+document.querySelectorAll('.nav-item').forEach(item => {
+    item.addEventListener('click', () => {
+        document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+        item.classList.add('active');
 
-        function showPassengerOrders() {
-            const list = document.getElementById('passengerOrdersList');
-            onValue(query(ref(db, 'orders'), orderByChild('passengerId'), equalTo(userId)), snap => {
-                const orders = snap.val() || {};
-                const arr = Object.values(orders).reverse();
-                if (arr.length === 0) {
-                    list.innerHTML = '<p style="text-align:center;opacity:0.6;">Заказов нет 😌</p>';
-                    return;
-                }
-                list.innerHTML = arr.slice(0, 20).map(o => `
-                    <div class="order-item">
-                        <div style="font-size:14px;opacity:0.8;">${new Date(o.timestamp).toLocaleString('ru-RU')}</div>
-                        <div style="font-weight:600;">${o.fromAddress} → ${o.toAddress}</div>
-                        <div>💰 ${o.price} ₽ • ${o.status === 'new' ? '🆕 Новый' : o.status === 'accepted' ? '✅ Принят' : 'Завершён'}</div>
-                    </div>
-                `).join('');
-            });
-        }
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        document.getElementById(item.dataset.tab).classList.add('active');
 
-        const savedTheme = localStorage.getItem('taxi_theme') || 'dark';
-        if (savedTheme === 'light') {
-            document.body.classList.add('light-theme');
-            document.getElementById('themeToggleBtn').textContent = '☀️';
-        }
+        if (item.dataset.tab === 'tab-orders') showPassengerOrders();
+        if (item.dataset.tab === 'tab-settings' && currentRole === 'admin') loadActiveShiftsForAdmin();
+    });
+});
 
-        window.toggleTheme = () => {
-            document.body.classList.toggle('light-theme');
-            const isLight = document.body.classList.contains('light-theme');
-            document.getElementById('themeToggleBtn').textContent = isLight ? '☀️' : '🌙';
-            localStorage.setItem('taxi_theme', isLight ? 'light' : 'dark');
-        };
-    </script>
+// Тема
+const savedTheme = localStorage.getItem('taxi_theme') || 'dark';
+if (savedTheme === 'light') {
+    document.body.classList.add('light-theme');
+    document.getElementById('themeToggleBtn').textContent = '☀️';
+}
+
+window.toggleTheme = () => {
+    document.body.classList.toggle('light-theme');
+    const isLight = document.body.classList.contains('light-theme');
+    document.getElementById('themeToggleBtn').textContent = isLight ? '☀️' : '🌙';
+    localStorage.setItem('taxi_theme', isLight ? 'light' : 'dark');
+};
+
+// Смена роли (админ)
+window.setRole = async role => {
+    const id = document.getElementById('roleUserId').value.trim();
+    if (!id) return alert('Введите ID пользователя');
+
+    if (role === 'passenger') {
+        await remove(ref(db, `roles/${id}`));
+    } else {
+        await set(ref(db, `roles/${id}`), role);
+    }
+    alert('Роль обновлена');
+};
+</script>
 </body>
 </html>
