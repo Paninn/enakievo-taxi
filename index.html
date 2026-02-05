@@ -10,11 +10,11 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.css" />
     <script src="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.js"></script>
 
-    <!-- Firebase -->
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
-        import { getDatabase, ref, onValue, set, push, update, remove, query, orderByChild, equalTo } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-database.js";
+    <!-- Firebase Compat (РАБОЧАЯ ВЕРСИЯ ДЛЯ ТЕЛЕГРАМ WEB APP) -->
+    <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-database-compat.js"></script>
 
+    <script>
         const firebaseConfig = {
             apiKey: "AIzaSyBrZRRocRp1FDemAZ1hLr0l5AlQGan9r5k",
             authDomain: "taxi-76c4e.firebaseapp.com",
@@ -26,9 +26,9 @@
             measurementId: "G-XX3QGHKR0S"
         };
 
-        const app = initializeApp(firebaseConfig);
-        const db = getDatabase(app);
-        window.db = db;
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+        window.db = db; // для совместимости со старым кодом
     </script>
 
     <style>
@@ -537,8 +537,8 @@ window.sendOrder = async () => {
         status: 'new'
     };
 
-    const newRef = push(ref(db, 'orders'));
-    await set(newRef, order);
+    const newRef = db.ref('orders').push();
+    await newRef.set(order);
 
     alert('Заказ отправлен! Ожидайте водителя...');
     Telegram.WebApp.HapticFeedback.notificationOccurred('success');
@@ -566,9 +566,10 @@ function updateSessionUI() {
 function startSessionListener() {
     if (sessionListener) sessionListener();
 
-    sessionListener = onValue(
-        query(ref(db, 'orders'), orderByChild('driverId'), equalTo(userId)),
-        snap => {
+    sessionListener = db.ref('orders')
+        .orderByChild('driverId')
+        .equalTo(userId)
+        .on('value', snap => {
             let earned = 0, trips = 0;
             snap.forEach(c => {
                 const o = c.val();
@@ -580,8 +581,7 @@ function startSessionListener() {
             sessionEarnings = earned;
             sessionTrips = trips;
             updateSessionUI();
-        }
-    );
+        });
 }
 
 async function endCurrentSession() {
@@ -600,20 +600,24 @@ window.toggleOnline = async () => {
     if (isOnline) {
         if (confirm('Уйти с линии и завершить смену?')) {
             await endCurrentSession();
-            await remove(ref(db, `onlineDrivers/${userId}`));
+            await db.ref(`onlineDrivers/${userId}`).remove();
+            isOnline = false;
+            loadDriverStatus();
         }
     } else {
         Telegram.WebApp.requestLocation(async pos => {
             sessionStartTime = Date.now();
-            await set(ref(db, `onlineDrivers/${userId}`), {
+            await db.ref(`onlineDrivers/${userId}`).set({
                 lat: pos.latitude,
                 lng: pos.longitude,
                 timestamp: Date.now(),
                 sessionStart: sessionStartTime,
                 driverName: fullName
             });
+            isOnline = true;
             startSessionListener();
             updateSessionUI();
+            loadDriverStatus();
         }, () => alert('Необходимо разрешить доступ к геолокации'));
     }
 };
@@ -623,7 +627,7 @@ window.endShift = () => {
 };
 
 window.acceptOrder = async orderId => {
-    await update(ref(db, `orders/${orderId}`), {
+    await db.ref(`orders/${orderId}`).update({
         status: 'accepted',
         driverId: userId,
         driverName: fullName,
@@ -633,7 +637,7 @@ window.acceptOrder = async orderId => {
 };
 
 window.completeTrip = async orderId => {
-    await update(ref(db, `orders/${orderId}`), {
+    await db.ref(`orders/${orderId}`).update({
         status: 'completed',
         completedAt: Date.now()
     });
@@ -663,7 +667,7 @@ function updateDriverOrders(orders = {}) {
 
 // ── Роли и UI ──────────────────────────────────────────────────────────────
 function loadRoleAndUI() {
-    onValue(ref(db, `roles/${userId}`), snap => {
+    db.ref(`roles/${userId}`).on('value', snap => {
         currentRole = snap.val() || 'passenger';
         document.getElementById('profileRole').textContent = 
             currentRole === 'admin' ? 'Администратор 👑' :
@@ -677,7 +681,7 @@ function loadRoleAndUI() {
 }
 
 function loadDriverStatus() {
-    onValue(ref(db, `onlineDrivers/${userId}`), snap => {
+    db.ref(`onlineDrivers/${userId}`).on('value', snap => {
         isOnline = snap.exists();
         document.getElementById('driverStatus').textContent = isOnline ? 'Онлайн 🚗' : 'Оффлайн';
         document.getElementById('driverStatus').style.color = isOnline ? 'var(--green)' : '';
@@ -686,12 +690,15 @@ function loadDriverStatus() {
         updateSessionUI();
     });
 
-    onValue(query(ref(db, 'orders'), orderByChild('status'), equalTo('new')), snap => {
-        if (isOnline && snap.exists()) {
-            Telegram.WebApp.HapticFeedback.notificationOccurred('warning');
-        }
-        updateDriverOrders(snap.val() || {});
-    });
+    db.ref('orders')
+        .orderByChild('status')
+        .equalTo('new')
+        .on('value', snap => {
+            if (isOnline && snap.exists()) {
+                Telegram.WebApp.HapticFeedback.notificationOccurred('warning');
+            }
+            updateDriverOrders(snap.val() || {});
+        });
 }
 
 // ── Навигация по вкладкам ──────────────────────────────────────────────────
@@ -725,9 +732,9 @@ window.setRole = async role => {
     if (!id) return alert('Введите ID пользователя');
 
     if (role === 'passenger') {
-        await remove(ref(db, `roles/${id}`));
+        await db.ref(`roles/${id}`).remove();
     } else {
-        await set(ref(db, `roles/${id}`), role);
+        await db.ref(`roles/${id}`).set(role);
     }
     alert('Роль обновлена');
 };
